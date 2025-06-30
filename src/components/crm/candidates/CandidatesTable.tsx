@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -43,7 +42,12 @@ const CandidatesTable = ({ candidates, onView, onEdit, onTogglePortalAccess }: C
               <TableRow key={candidate.id}>
                 <TableCell>
                   <div>
-                    <div className="font-medium">{candidate.candidate_name}</div>
+                    <div 
+                      className="font-medium cursor-pointer hover:text-primary hover:underline"
+                      onClick={() => onView(candidate)}
+                    >
+                      {candidate.candidate_name}
+                    </div>
                     <div className="text-sm text-muted-foreground">
                       {candidate.recruiter && `Recruiter: ${candidate.recruiter}`}
                     </div>

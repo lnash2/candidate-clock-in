@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,13 +6,16 @@ import { Plus, Search, Users, UserCheck, Clock, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import CandidatesTable from './candidates/CandidatesTable';
 import CandidateFormDialog from './candidates/CandidateFormDialog';
+import CandidateDetailDialog from './candidates/CandidateDetailDialog';
 import { Candidate, CandidateFormData } from './candidates/types';
 
 const CandidateManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [editingCandidate, setEditingCandidate] = useState<Candidate | null>(null);
+  const [viewingCandidate, setViewingCandidate] = useState<Candidate | null>(null);
   const { toast } = useToast();
 
   // Mock data - in real implementation, this would come from Supabase
@@ -126,11 +128,18 @@ const CandidateManagement = () => {
   };
 
   const handleViewCandidate = (candidate: Candidate) => {
-    // This would navigate to a detailed candidate view
-    console.log('View candidate:', candidate);
+    setViewingCandidate(candidate);
+    setIsDetailOpen(true);
   };
 
   const handleEditClick = (candidate: Candidate) => {
+    setEditingCandidate(candidate);
+    setIsFormOpen(true);
+  };
+
+  const handleEditFromDetail = (candidate: Candidate) => {
+    setIsDetailOpen(false);
+    setViewingCandidate(null);
     setEditingCandidate(candidate);
     setIsFormOpen(true);
   };
@@ -249,6 +258,20 @@ const CandidateManagement = () => {
           portal_access_enabled: editingCandidate.portal_access_enabled
         } : undefined}
         mode={editingCandidate ? 'edit' : 'create'}
+      />
+
+      {/* Detail Dialog */}
+      <CandidateDetailDialog
+        open={isDetailOpen}
+        onOpenChange={(open) => {
+          setIsDetailOpen(open);
+          if (!open) {
+            setViewingCandidate(null);
+          }
+        }}
+        candidate={viewingCandidate}
+        onEdit={handleEditFromDetail}
+        onTogglePortalAccess={handleTogglePortalAccess}
       />
     </div>
   );
