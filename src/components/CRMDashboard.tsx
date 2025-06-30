@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import AppSidebar from './AppSidebar';
@@ -57,13 +58,13 @@ const CRMDashboard = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-screen flex w-full bg-white">
         <AppSidebar
           activeSection={activeSection}
           onSectionChange={setActiveSection}
         />
-        <SidebarInset>
-          <header className="flex h-12 shrink-0 items-center gap-3 border-b px-3 bg-white">
+        <SidebarInset className="flex-1">
+          <header className="flex h-12 shrink-0 items-center gap-3 border-b px-6 bg-white">
             <div className="flex items-center space-x-2">
               <h1 className="text-lg font-semibold">
                 {selectedCompanyId !== null ? 'Company Details' : 
@@ -71,7 +72,7 @@ const CRMDashboard = () => {
               </h1>
             </div>
           </header>
-          <div className="flex flex-1 flex-col">
+          <div className="flex-1 bg-white">
             {renderContent()}
           </div>
         </SidebarInset>
