@@ -9,7 +9,437 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      bookings: {
+        Row: {
+          booking_type: string | null
+          candidate_id: string | null
+          created_at: string
+          customer_id: string | null
+          driver_class: string | null
+          dropoff_location: string | null
+          end_date: string
+          estimated_duration: number | null
+          id: string
+          is_night_shift: boolean | null
+          notes: string | null
+          pickup_location: string | null
+          route_distance: number | null
+          start_date: string
+          status: string | null
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          booking_type?: string | null
+          candidate_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          driver_class?: string | null
+          dropoff_location?: string | null
+          end_date: string
+          estimated_duration?: number | null
+          id?: string
+          is_night_shift?: boolean | null
+          notes?: string | null
+          pickup_location?: string | null
+          route_distance?: number | null
+          start_date: string
+          status?: string | null
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          booking_type?: string | null
+          candidate_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          driver_class?: string | null
+          dropoff_location?: string | null
+          end_date?: string
+          estimated_duration?: number | null
+          id?: string
+          is_night_shift?: boolean | null
+          notes?: string | null
+          pickup_location?: string | null
+          route_distance?: number | null
+          start_date?: string
+          status?: string | null
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidates: {
+        Row: {
+          active_status: string | null
+          address: string | null
+          availability_status: string | null
+          bank_account_number: string | null
+          bank_sort_code: string | null
+          candidate_name: string
+          city: string | null
+          cpc_expiry_date: string | null
+          created_at: string
+          date_of_birth: string | null
+          driving_licence_number: string | null
+          email: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          hourly_rate: number | null
+          id: string
+          licence_categories: string[] | null
+          licence_expiry_date: string | null
+          medical_certificate_expiry: string | null
+          national_insurance_number: string | null
+          notes: string | null
+          phone: string | null
+          postcode: string | null
+          skills: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          active_status?: string | null
+          address?: string | null
+          availability_status?: string | null
+          bank_account_number?: string | null
+          bank_sort_code?: string | null
+          candidate_name: string
+          city?: string | null
+          cpc_expiry_date?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          driving_licence_number?: string | null
+          email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          hourly_rate?: number | null
+          id?: string
+          licence_categories?: string[] | null
+          licence_expiry_date?: string | null
+          medical_certificate_expiry?: string | null
+          national_insurance_number?: string | null
+          notes?: string | null
+          phone?: string | null
+          postcode?: string | null
+          skills?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          active_status?: string | null
+          address?: string | null
+          availability_status?: string | null
+          bank_account_number?: string | null
+          bank_sort_code?: string | null
+          candidate_name?: string
+          city?: string | null
+          cpc_expiry_date?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          driving_licence_number?: string | null
+          email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          hourly_rate?: number | null
+          id?: string
+          licence_categories?: string[] | null
+          licence_expiry_date?: string | null
+          medical_certificate_expiry?: string | null
+          national_insurance_number?: string | null
+          notes?: string | null
+          phone?: string | null
+          postcode?: string | null
+          skills?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      company_rates: {
+        Row: {
+          charge_rate: number
+          created_at: string
+          customer_id: string | null
+          description: string | null
+          driver_class: string
+          effective_from: string | null
+          effective_to: string | null
+          id: string
+          is_active: boolean | null
+          pay_rate: number
+          rate_category: string
+          updated_at: string
+        }
+        Insert: {
+          charge_rate: number
+          created_at?: string
+          customer_id?: string | null
+          description?: string | null
+          driver_class: string
+          effective_from?: string | null
+          effective_to?: string | null
+          id?: string
+          is_active?: boolean | null
+          pay_rate: number
+          rate_category: string
+          updated_at?: string
+        }
+        Update: {
+          charge_rate?: number
+          created_at?: string
+          customer_id?: string | null
+          description?: string | null
+          driver_class?: string
+          effective_from?: string | null
+          effective_to?: string | null
+          id?: string
+          is_active?: boolean | null
+          pay_rate?: number
+          rate_category?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_rates_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customers: {
+        Row: {
+          address: string | null
+          business_type: string | null
+          city: string | null
+          company: string
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          country: string | null
+          created_at: string
+          credit_limit: number | null
+          id: string
+          is_active: boolean | null
+          notes: string | null
+          payment_terms: number | null
+          postcode: string | null
+          updated_at: string
+          vat_number: string | null
+        }
+        Insert: {
+          address?: string | null
+          business_type?: string | null
+          city?: string | null
+          company: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          country?: string | null
+          created_at?: string
+          credit_limit?: number | null
+          id?: string
+          is_active?: boolean | null
+          notes?: string | null
+          payment_terms?: number | null
+          postcode?: string | null
+          updated_at?: string
+          vat_number?: string | null
+        }
+        Update: {
+          address?: string | null
+          business_type?: string | null
+          city?: string | null
+          company?: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          country?: string | null
+          created_at?: string
+          credit_limit?: number | null
+          id?: string
+          is_active?: boolean | null
+          notes?: string | null
+          payment_terms?: number | null
+          postcode?: string | null
+          updated_at?: string
+          vat_number?: string | null
+        }
+        Relationships: []
+      }
+      note_types: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      vehicles: {
+        Row: {
+          created_at: string
+          fuel_type: string | null
+          gross_weight: number | null
+          id: string
+          insurance_expiry_date: string | null
+          last_service_date: string | null
+          location: string | null
+          manufacturer: string | null
+          mileage: number | null
+          model: string | null
+          mot_expiry_date: string | null
+          next_service_due_date: string | null
+          notes: string | null
+          status: string | null
+          tax_expiry_date: string | null
+          truck_registration: string
+          updated_at: string
+          vehicle_type: string | null
+          year_manufactured: number | null
+        }
+        Insert: {
+          created_at?: string
+          fuel_type?: string | null
+          gross_weight?: number | null
+          id?: string
+          insurance_expiry_date?: string | null
+          last_service_date?: string | null
+          location?: string | null
+          manufacturer?: string | null
+          mileage?: number | null
+          model?: string | null
+          mot_expiry_date?: string | null
+          next_service_due_date?: string | null
+          notes?: string | null
+          status?: string | null
+          tax_expiry_date?: string | null
+          truck_registration: string
+          updated_at?: string
+          vehicle_type?: string | null
+          year_manufactured?: number | null
+        }
+        Update: {
+          created_at?: string
+          fuel_type?: string | null
+          gross_weight?: number | null
+          id?: string
+          insurance_expiry_date?: string | null
+          last_service_date?: string | null
+          location?: string | null
+          manufacturer?: string | null
+          mileage?: number | null
+          model?: string | null
+          mot_expiry_date?: string | null
+          next_service_due_date?: string | null
+          notes?: string | null
+          status?: string | null
+          tax_expiry_date?: string | null
+          truck_registration?: string
+          updated_at?: string
+          vehicle_type?: string | null
+          year_manufactured?: number | null
+        }
+        Relationships: []
+      }
+      work_locations: {
+        Row: {
+          address_line_1: string | null
+          address_line_2: string | null
+          city: string | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          country: string | null
+          created_at: string
+          customer_id: string | null
+          id: string
+          is_active: boolean | null
+          is_primary: boolean | null
+          location_name: string
+          postcode: string | null
+          special_instructions: string | null
+          updated_at: string
+        }
+        Insert: {
+          address_line_1?: string | null
+          address_line_2?: string | null
+          city?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          country?: string | null
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_primary?: boolean | null
+          location_name: string
+          postcode?: string | null
+          special_instructions?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address_line_1?: string | null
+          address_line_2?: string | null
+          city?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          country?: string | null
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_primary?: boolean | null
+          location_name?: string
+          postcode?: string | null
+          special_instructions?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_locations_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
