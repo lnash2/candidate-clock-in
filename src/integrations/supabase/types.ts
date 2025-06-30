@@ -91,6 +91,276 @@ export type Database = {
           },
         ]
       }
+      candidate_communications: {
+        Row: {
+          candidate_id: string | null
+          communication_type: string
+          content: string
+          created_at: string
+          id: string
+          organization_id: string | null
+          sent_at: string | null
+          sent_by: string | null
+          subject: string | null
+        }
+        Insert: {
+          candidate_id?: string | null
+          communication_type: string
+          content: string
+          created_at?: string
+          id?: string
+          organization_id?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
+          subject?: string | null
+        }
+        Update: {
+          candidate_id?: string | null
+          communication_type?: string
+          content?: string
+          created_at?: string
+          id?: string
+          organization_id?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_communications_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_communications_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidate_documents: {
+        Row: {
+          candidate_id: string | null
+          created_at: string
+          document_name: string
+          document_type: string
+          expiry_date: string | null
+          file_path: string | null
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          organization_id: string | null
+          status: string | null
+          upload_date: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          candidate_id?: string | null
+          created_at?: string
+          document_name: string
+          document_type: string
+          expiry_date?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          organization_id?: string | null
+          status?: string | null
+          upload_date?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          candidate_id?: string | null
+          created_at?: string
+          document_name?: string
+          document_type?: string
+          expiry_date?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          organization_id?: string | null
+          status?: string | null
+          upload_date?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_documents_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_documents_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidate_notes: {
+        Row: {
+          candidate_id: string | null
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          note_type_id: string | null
+          organization_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          candidate_id?: string | null
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note_type_id?: string | null
+          organization_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          candidate_id?: string | null
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note_type_id?: string | null
+          organization_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_notes_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_notes_note_type_id_fkey"
+            columns: ["note_type_id"]
+            isOneToOne: false
+            referencedRelation: "note_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_notes_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidates: {
+        Row: {
+          active_status: string | null
+          address: string | null
+          candidate_name: string
+          created_at: string
+          created_by: string | null
+          date_added: string | null
+          department_tags: string[] | null
+          email: string | null
+          id: string
+          industries: string[] | null
+          job_categories: string[] | null
+          job_title: string | null
+          last_portal_login: string | null
+          national_insurance_no: string | null
+          onboarding_status: string | null
+          organization_id: string | null
+          payroll_type: string | null
+          phone: string | null
+          portal_access_enabled: boolean | null
+          portal_access_token: string | null
+          postcode: string | null
+          preferred_shift: string | null
+          recruiter: string | null
+          registered_at: string | null
+          registration_status: string | null
+          registration_type: string | null
+          resourcer: string | null
+          updated_at: string
+        }
+        Insert: {
+          active_status?: string | null
+          address?: string | null
+          candidate_name: string
+          created_at?: string
+          created_by?: string | null
+          date_added?: string | null
+          department_tags?: string[] | null
+          email?: string | null
+          id?: string
+          industries?: string[] | null
+          job_categories?: string[] | null
+          job_title?: string | null
+          last_portal_login?: string | null
+          national_insurance_no?: string | null
+          onboarding_status?: string | null
+          organization_id?: string | null
+          payroll_type?: string | null
+          phone?: string | null
+          portal_access_enabled?: boolean | null
+          portal_access_token?: string | null
+          postcode?: string | null
+          preferred_shift?: string | null
+          recruiter?: string | null
+          registered_at?: string | null
+          registration_status?: string | null
+          registration_type?: string | null
+          resourcer?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active_status?: string | null
+          address?: string | null
+          candidate_name?: string
+          created_at?: string
+          created_by?: string | null
+          date_added?: string | null
+          department_tags?: string[] | null
+          email?: string | null
+          id?: string
+          industries?: string[] | null
+          job_categories?: string[] | null
+          job_title?: string | null
+          last_portal_login?: string | null
+          national_insurance_no?: string | null
+          onboarding_status?: string | null
+          organization_id?: string | null
+          payroll_type?: string | null
+          phone?: string | null
+          portal_access_enabled?: boolean | null
+          portal_access_token?: string | null
+          postcode?: string | null
+          preferred_shift?: string | null
+          recruiter?: string | null
+          registered_at?: string | null
+          registration_status?: string | null
+          registration_type?: string | null
+          resourcer?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidates_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_rates: {
         Row: {
           charge_rate: number

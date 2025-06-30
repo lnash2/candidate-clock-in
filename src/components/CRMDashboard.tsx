@@ -1,8 +1,10 @@
+
 import React, { useState } from 'react';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import AppSidebar from './AppSidebar';
 import CompanyManagement from './crm/CompanyManagement';
 import ContactManagement from './crm/ContactManagement';
+import CandidateManagement from './crm/CandidateManagement';
 import CommunicationTracking from './crm/CommunicationTracking';
 import RateManagement from './crm/RateManagement';
 import BookingManagement from './crm/BookingManagement';
@@ -41,6 +43,8 @@ const CRMDashboard = () => {
         return <CompanyManagement onCompanySelect={handleCompanySelect} />;
       case 'contacts':
         return <ContactManagement />;
+      case 'candidates':
+        return <CandidateManagement />;
       case 'communications':
         return <CommunicationTracking />;
       case 'rates':

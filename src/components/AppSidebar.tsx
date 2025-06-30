@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Building2, Users, MessageSquare, DollarSign, Calendar, BarChart3 } from 'lucide-react';
+import { Building2, Users, MessageSquare, DollarSign, Calendar, BarChart3, UserCheck } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -27,6 +27,7 @@ const AppSidebar = ({ activeSection, onSectionChange }: AppSidebarProps) => {
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'companies', label: 'Companies', icon: Building2 },
     { id: 'contacts', label: 'Contacts', icon: Users },
+    { id: 'candidates', label: 'Candidates', icon: UserCheck },
     { id: 'communications', label: 'Communications', icon: MessageSquare },
     { id: 'rates', label: 'Rates', icon: DollarSign },
     { id: 'bookings', label: 'Bookings', icon: Calendar },
