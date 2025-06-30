@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import BookingCard from './BookingCard';
 
 interface Booking {
@@ -26,6 +27,17 @@ interface BookingsListProps {
 }
 
 const BookingsList = ({ bookings, onViewDetails }: BookingsListProps) => {
+  if (bookings.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-lg text-muted-foreground">No bookings found</p>
+          <p className="text-sm text-muted-foreground">Try adjusting your search criteria</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {bookings.map(booking => (

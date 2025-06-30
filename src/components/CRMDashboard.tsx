@@ -34,11 +34,7 @@ const CRMDashboard = () => {
       case 'settings':
         return <Settings />;
       case 'setup':
-        return (
-          <div className="flex items-center justify-center min-h-screen p-8">
-            <DatabaseSetup />
-          </div>
-        );
+        return <DatabaseSetup />;
       default:
         return <CRMOverview />;
     }
@@ -46,15 +42,15 @@ const CRMDashboard = () => {
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen w-full">
+      <div className="min-h-screen w-full flex bg-gray-50">
         <AppSidebar 
           activeView={activeView} 
           onViewChange={setActiveView}
         />
-        <SidebarInset className="flex-1">
-          <main className="h-full overflow-auto">
+        <SidebarInset className="flex-1 flex flex-col">
+          <div className="flex-1 overflow-hidden">
             {renderActiveView()}
-          </main>
+          </div>
         </SidebarInset>
       </div>
     </SidebarProvider>
