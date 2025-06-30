@@ -16,7 +16,7 @@ import {
   Users, 
   UserCheck, 
   MessageCircle, 
-  DollarSign, 
+  PoundSterling, 
   Calendar, 
   Settings
 } from 'lucide-react';
@@ -33,7 +33,7 @@ const AppSidebar = ({ activeSection, onSectionChange }: AppSidebarProps) => {
     { id: 'contacts', label: 'Contacts', icon: Users },
     { id: 'candidates', label: 'Candidates', icon: UserCheck },
     { id: 'communications', label: 'Communications', icon: MessageCircle },
-    { id: 'rates', label: 'Rates', icon: DollarSign },
+    { id: 'rates', label: 'Rates', icon: PoundSterling },
     { id: 'bookings', label: 'Bookings', icon: Calendar },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
