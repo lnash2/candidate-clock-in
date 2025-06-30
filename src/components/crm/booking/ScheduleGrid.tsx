@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ChevronLeft, ChevronRight, Moon, Sun, Plus, StickyNote, User, Pencil } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Moon, Sun, Plus, StickyNote, User, Pencil, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { format, addDays, startOfWeek, isSameDay, parseISO } from 'date-fns';
 import CandidateInfoPopover from './CandidateInfoPopover';
 import AddNoteDialog from './AddNoteDialog';
@@ -43,17 +43,20 @@ interface ScheduleGridProps {
   onCreateBooking?: () => void;
 }
 
+type SortOrder = 'asc' | 'desc' | null;
+
 const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGridProps) => {
   const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const [availabilityDialogOpen, setAvailabilityDialogOpen] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [sortOrder, setSortOrder] = useState<SortOrder>(null);
   // Track availability per candidate per day: candidateId -> dateString -> boolean
   const [candidateAvailability, setCandidateAvailability] = useState<{[key: string]: {[key: string]: boolean}}>({});
 
   // Enhanced mock candidates data with contact information
-  const candidates: Candidate[] = [
+  const candidatesData: Candidate[] = [
     { 
       id: 'cand-001', 
       name: 'John Smith', 
@@ -105,6 +108,32 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
       available: true
     },
   ];
+
+  // Sort candidates based on current sort order
+  const candidates = React.useMemo(() => {
+    if (!sortOrder) return candidatesData;
+    
+    return [...candidatesData].sort((a, b) => {
+      const comparison = a.name.localeCompare(b.name);
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+  }, [sortOrder]);
+
+  const handleSort = () => {
+    if (sortOrder === null) {
+      setSortOrder('asc');
+    } else if (sortOrder === 'asc') {
+      setSortOrder('desc');
+    } else {
+      setSortOrder(null);
+    }
+  };
+
+  const getSortIcon = () => {
+    if (sortOrder === 'asc') return <ChevronUp className="w-3 h-3 ml-1" />;
+    if (sortOrder === 'desc') return <ChevronDown className="w-3 h-3 ml-1" />;
+    return <ArrowUpDown className="w-3 h-3 ml-1" />;
+  };
 
   // Generate 7 days starting from currentWeekStart
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i));
@@ -246,10 +275,11 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
             <div className="min-w-[1400px]">
               {/* Header row with dates */}
               <div className="grid grid-cols-8 gap-px bg-gray-200">
-                <div className="p-2 font-semibold text-xs bg-gray-50 border-r min-w-[400px]">
-                  <div className="flex items-center space-x-1">
-                    <User className="w-3 h-3" />
+                <div className="p-3 font-semibold text-sm bg-gray-50 border-r min-w-[600px]">
+                  <div className="flex items-center cursor-pointer hover:bg-gray-100 p-1 rounded" onClick={handleSort}>
+                    <User className="w-4 h-4 mr-2" />
                     <span>Candidate Details</span>
+                    {getSortIcon()}
                   </div>
                 </div>
                 {weekDays.map((date) => (
@@ -268,38 +298,55 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
               {/* Candidate rows */}
               {candidates.map((candidate) => (
                 <div key={candidate.id} className="grid grid-cols-8 gap-px bg-gray-200 border-b">
-                  {/* Expanded candidate details in horizontal layout */}
-                  <div className="p-3 bg-white border-r flex items-center justify-between min-h-[60px]">
+                  {/* Expanded candidate details with full information */}
+                  <div className="p-4 bg-white border-r flex items-center justify-between min-h-[80px]">
                     <CandidateInfoPopover candidate={candidate}>
-                      <div className="cursor-pointer hover:bg-gray-50 p-2 rounded flex items-center space-x-4 flex-1 min-w-0">
-                        <div className="font-medium text-sm text-blue-600 hover:text-blue-800 min-w-[120px]">
-                          {candidate.name}
-                        </div>
-                        <div className="text-xs text-gray-600 min-w-[110px]">
-                          {candidate.phone}
-                        </div>
-                        <Badge variant="outline" className="text-xs px-2 py-1 h-6 min-w-[90px] text-center">
-                          {candidate.driverClass}
-                        </Badge>
-                        {candidate.jobCategories && candidate.jobCategories.length > 0 && (
-                          <div className="text-xs text-gray-500 min-w-[100px]">
-                            {candidate.jobCategories[0]}
+                      <div className="cursor-pointer hover:bg-gray-50 p-3 rounded flex-1 min-w-0 grid grid-cols-4 gap-4 items-center">
+                        {/* Name and Driver Class */}
+                        <div className="space-y-1">
+                          <div className="font-semibold text-sm text-blue-600 hover:text-blue-800">
+                            {candidate.name}
                           </div>
-                        )}
-                        {candidate.location && (
-                          <div className="text-xs text-gray-400 truncate max-w-[80px]">
-                            {candidate.location.split(',')[0]}
-                          </div>
-                        )}
+                          <Badge variant="outline" className="text-xs px-2 py-1 h-6">
+                            {candidate.driverClass}
+                          </Badge>
+                        </div>
+                        
+                        {/* Contact Information */}
+                        <div className="space-y-1 text-xs text-gray-600">
+                          <div className="truncate">{candidate.phone}</div>
+                          <div className="truncate">{candidate.email}</div>
+                        </div>
+                        
+                        {/* Location */}
+                        <div className="text-xs text-gray-500">
+                          <div className="truncate">{candidate.location}</div>
+                        </div>
+                        
+                        {/* Job Categories */}
+                        <div className="text-xs">
+                          {candidate.jobCategories && candidate.jobCategories.length > 0 && (
+                            <div className="space-y-1">
+                              {candidate.jobCategories.slice(0, 2).map((category, index) => (
+                                <Badge key={index} variant="secondary" className="text-xs mr-1 mb-1">
+                                  {category}
+                                </Badge>
+                              ))}
+                              {candidate.jobCategories.length > 2 && (
+                                <span className="text-gray-400">+{candidate.jobCategories.length - 2} more</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </CandidateInfoPopover>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => handleAddCandidateNote(candidate)}
-                      className="h-6 w-6 p-0 ml-2 flex-shrink-0"
+                      className="h-8 w-8 p-0 ml-3 flex-shrink-0"
                     >
-                      <StickyNote className="w-3 h-3" />
+                      <StickyNote className="w-4 h-4" />
                     </Button>
                   </div>
                   
@@ -311,18 +358,18 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                     return (
                       <div
                         key={`${candidate.id}-${date.toISOString()}`}
-                        className="bg-white min-h-[60px] flex flex-col"
+                        className="bg-white min-h-[80px] flex flex-col"
                       >
                         {/* Top section: Availability indicator and pencil */}
-                        <div className="p-1 border-b border-gray-100 flex items-center justify-between h-7 bg-gray-25">
+                        <div className="p-1 border-b border-gray-100 flex items-center justify-between h-8 bg-gray-25">
                           <AvailabilityStatusIndicator isAvailable={isAvailable} />
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleOpenAvailabilityDialog(candidate, date)}
-                            className="h-4 w-4 p-0 ml-1 flex-shrink-0 hover:bg-gray-200"
+                            className="h-5 w-5 p-0 ml-1 flex-shrink-0 hover:bg-gray-200"
                           >
-                            <Pencil className="w-2.5 h-2.5 text-gray-500" />
+                            <Pencil className="w-3 h-3 text-gray-500" />
                           </Button>
                         </div>
                         
@@ -330,16 +377,16 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                         <div className="p-1 flex-1 hover:bg-gray-50 relative">
                           {booking ? (
                             <div
-                              className={`p-1 rounded cursor-pointer text-xs h-full ${getStatusColor(booking.status, booking.bookingType)} relative`}
+                              className={`p-2 rounded cursor-pointer text-xs h-full ${getStatusColor(booking.status, booking.bookingType)} relative`}
                               onClick={() => onBookingClick(booking)}
                             >
                               <div className="flex items-center justify-between">
                                 <span className="font-medium truncate text-xs flex-1">{booking.customer}</span>
                                 <div className="flex items-center space-x-0.5 flex-shrink-0">
                                   {booking.isNightShift ? (
-                                    <Moon className="w-2.5 h-2.5" />
+                                    <Moon className="w-3 h-3" />
                                   ) : (
-                                    <Sun className="w-2.5 h-2.5" />
+                                    <Sun className="w-3 h-3" />
                                   )}
                                   <BookingActionsMenu
                                     bookingId={booking.id}
