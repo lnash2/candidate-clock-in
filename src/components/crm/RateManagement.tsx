@@ -177,7 +177,7 @@ const RateManagement = () => {
                     <div className="flex justify-between items-start mb-3">
                       <div>
                         <h4 className="font-medium">{rate.customer}</h4>
-                        <Badge className={getDayTypeColor(rate.dayType)} size="sm">
+                        <Badge className={getDayTypeColor(rate.dayType)}>
                           {rate.dayType.replace('_', ' ')}
                         </Badge>
                       </div>
