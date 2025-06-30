@@ -1,23 +1,25 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import BookingForm from './BookingForm';
+import ComprehensiveBookingForm from './ComprehensiveBookingForm';
 import OpenBookingsSection from './OpenBookingsSection';
 import ScheduleGrid from './booking/ScheduleGrid';
 import BookingStats from './booking/BookingStats';
 import ViewToggle from './booking/ViewToggle';
 import SearchFilters from './booking/SearchFilters';
 import BookingsList from './booking/BookingsList';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const BookingManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDate, setSelectedDate] = useState('2024-01-01');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [activeView, setActiveView] = useState('list');
+  const { toast } = useToast();
 
-  // Updated mock booking data with candidate_id field
+  // Mock booking data for now - this will be replaced with real Supabase data
   const bookings = [
     {
       id: 1,
@@ -103,9 +105,43 @@ const BookingManagement = () => {
     booking.dropoffLocation.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleCreateBooking = (bookingData: any) => {
-    console.log('Creating booking:', bookingData);
-    setIsCreateDialogOpen(false);
+  const handleCreateBooking = async (bookingData: any) => {
+    try {
+      console.log('Creating comprehensive booking:', bookingData);
+      
+      // Here we would save to Supabase
+      const { error } = await supabase
+        .from('bookings')
+        .insert([{
+          candidate_id: bookingData.candidate_id,
+          customer_id: bookingData.customer_id,
+          start_date: bookingData.start_date,
+          end_date: bookingData.end_date,
+          pickup_location: bookingData.pickup_location,
+          dropoff_location: bookingData.dropoff_location,
+          driver_class: bookingData.driver_class,
+          booking_type: 'assigned',
+          status: bookingData.booking_status,
+          is_night_shift: bookingData.booking_type === 'night_shift',
+          notes: bookingData.notes
+        }]);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Booking created successfully',
+      });
+
+      setIsCreateDialogOpen(false);
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create booking',
+        variant: 'destructive'
+      });
+    }
   };
 
   const handleAssignCandidate = (bookingId: number) => {
@@ -159,12 +195,11 @@ const BookingManagement = () => {
                 Create Booking
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Create New Booking</DialogTitle>
+                <DialogTitle>Create New Comprehensive Booking</DialogTitle>
               </DialogHeader>
-              <BookingForm
-                customerId="sample-customer-id"
+              <ComprehensiveBookingForm
                 onSubmit={handleCreateBooking}
                 onCancel={() => setIsCreateDialogOpen(false)}
               />
@@ -178,8 +213,8 @@ const BookingManagement = () => {
         <div className="p-4 border-b bg-gray-50">
           <OpenBookingsSection
             bookings={openBookings}
-            onAssignCandidate={handleAssignCandidate}
-            onEditBooking={handleEditBooking}
+            onAssignCandidate={(bookingId) => console.log('Assigning candidate to booking:', bookingId)}
+            onEditBooking={(bookingId) => console.log('Editing booking:', bookingId)}
           />
         </div>
 
@@ -200,13 +235,13 @@ const BookingManagement = () => {
           {activeView === 'calendar' ? (
             <ScheduleGrid
               bookings={filteredBookings}
-              onBookingClick={handleBookingClick}
+              onBookingClick={(booking) => console.log('Clicked booking:', booking)}
               onCreateBooking={() => setIsCreateDialogOpen(true)}
             />
           ) : (
             <BookingsList
               bookings={filteredBookings}
-              onViewDetails={handleViewDetails}
+              onViewDetails={(bookingId) => console.log('View details for booking:', bookingId)}
             />
           )}
         </div>
