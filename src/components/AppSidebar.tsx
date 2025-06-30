@@ -8,7 +8,8 @@ import {
   SidebarGroupLabel, 
   SidebarMenu, 
   SidebarMenuButton, 
-  SidebarMenuItem 
+  SidebarMenuItem,
+  useSidebar
 } from '@/components/ui/sidebar';
 import { 
   BarChart3, 
@@ -27,6 +28,9 @@ interface AppSidebarProps {
 }
 
 const AppSidebar = ({ activeSection, onSectionChange }: AppSidebarProps) => {
+  const { state } = useSidebar();
+  const isCollapsed = state === 'collapsed';
+
   const menuItems = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'companies', label: 'Companies', icon: Building2 },
@@ -39,10 +43,10 @@ const AppSidebar = ({ activeSection, onSectionChange }: AppSidebarProps) => {
   ];
 
   return (
-    <Sidebar>
+    <Sidebar collapsible="icon">
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>CRM Dashboard</SidebarGroupLabel>
+          {!isCollapsed && <SidebarGroupLabel>CRM Dashboard</SidebarGroupLabel>}
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => {
@@ -52,9 +56,10 @@ const AppSidebar = ({ activeSection, onSectionChange }: AppSidebarProps) => {
                     <SidebarMenuButton 
                       onClick={() => onSectionChange(item.id)}
                       isActive={activeSection === item.id}
+                      tooltip={isCollapsed ? item.label : undefined}
                     >
                       <Icon className="w-4 h-4" />
-                      <span>{item.label}</span>
+                      {!isCollapsed && <span>{item.label}</span>}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
