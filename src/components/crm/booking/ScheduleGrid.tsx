@@ -1,14 +1,15 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ChevronLeft, ChevronRight, Moon, Sun, Plus, StickyNote, User } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Moon, Sun, Plus, StickyNote, User, Pencil } from 'lucide-react';
 import { format, addDays, startOfWeek, isSameDay, parseISO } from 'date-fns';
 import CandidateInfoPopover from './CandidateInfoPopover';
 import AddNoteDialog from './AddNoteDialog';
 import BookingActionsMenu from './BookingActionsMenu';
+import AvailabilityDialog from './AvailabilityDialog';
+import AvailabilityStatusIndicator from './AvailabilityStatusIndicator';
 
 interface BookingEvent {
   id: number;
@@ -45,7 +46,9 @@ interface ScheduleGridProps {
 const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGridProps) => {
   const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const [availabilityDialogOpen, setAvailabilityDialogOpen] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   // Track availability per candidate per day: candidateId -> dateString -> boolean
   const [candidateAvailability, setCandidateAvailability] = useState<{[key: string]: {[key: string]: boolean}}>({});
 
@@ -180,6 +183,31 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
     console.log('Candidate availability changed:', candidateId, dateString, available);
   };
 
+  const handleOpenAvailabilityDialog = (candidate: Candidate, date: Date) => {
+    setSelectedCandidate(candidate);
+    setSelectedDate(date);
+    setAvailabilityDialogOpen(true);
+  };
+
+  const handleSaveAvailability = (candidateId: string, startDate: Date, endDate: Date, available: boolean) => {
+    // Set availability for the date range
+    const currentDate = new Date(startDate);
+    const updates = { ...candidateAvailability };
+    
+    if (!updates[candidateId]) {
+      updates[candidateId] = {};
+    }
+    
+    while (currentDate <= endDate) {
+      const dateString = format(currentDate, 'yyyy-MM-dd');
+      updates[candidateId][dateString] = available;
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    setCandidateAvailability(updates);
+    console.log('Availability updated for candidate:', candidateId, 'from', startDate, 'to', endDate, 'available:', available);
+  };
+
   const getCandidateAvailability = (candidateId: string, date: Date) => {
     const dateString = format(date, 'yyyy-MM-dd');
     return candidateAvailability[candidateId]?.[dateString] ?? true; // Default to available
@@ -275,7 +303,7 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                     </Button>
                   </div>
                   
-                  {/* Date columns with split cells */}
+                  {/* Date columns with availability indicator and booking area */}
                   {weekDays.map((date) => {
                     const booking = getBookingForCandidateAndDate(candidate.id, date);
                     const isAvailable = getCandidateAvailability(candidate.id, date);
@@ -285,16 +313,17 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                         key={`${candidate.id}-${date.toISOString()}`}
                         className="bg-white min-h-[60px] flex flex-col"
                       >
-                        {/* Top section: Availability toggle */}
-                        <div className="p-1 border-b border-gray-100 flex items-center justify-center h-7 bg-gray-25">
-                          <Checkbox
-                            checked={isAvailable}
-                            onCheckedChange={(checked) => 
-                              handleAvailabilityChange(candidate.id, date, !!checked)
-                            }
-                            className="h-3 w-3"
-                          />
-                          <span className="text-xs text-gray-500 ml-1">Available</span>
+                        {/* Top section: Availability indicator and pencil */}
+                        <div className="p-1 border-b border-gray-100 flex items-center justify-between h-7 bg-gray-25">
+                          <AvailabilityStatusIndicator isAvailable={isAvailable} />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleOpenAvailabilityDialog(candidate, date)}
+                            className="h-4 w-4 p-0 ml-1 flex-shrink-0 hover:bg-gray-200"
+                          >
+                            <Pencil className="w-2.5 h-2.5 text-gray-500" />
+                          </Button>
                         </div>
                         
                         {/* Bottom section: Booking area */}
@@ -353,6 +382,16 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
         candidateId={selectedCandidate?.id || ''}
         candidateName={selectedCandidate?.name || ''}
         onAddNote={handleAddNote}
+      />
+
+      {/* Availability Dialog */}
+      <AvailabilityDialog
+        open={availabilityDialogOpen}
+        onOpenChange={setAvailabilityDialogOpen}
+        candidateId={selectedCandidate?.id || ''}
+        candidateName={selectedCandidate?.name || ''}
+        initialDate={selectedDate || new Date()}
+        onSaveAvailability={handleSaveAvailability}
       />
     </div>
   );
