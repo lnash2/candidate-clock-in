@@ -6,7 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Search, Edit, Eye, Phone, Mail } from 'lucide-react';
 
-const CompanyManagement = () => {
+interface CompanyManagementProps {
+  onCompanySelect?: (companyId: number) => void;
+}
+
+const CompanyManagement = ({ onCompanySelect }: CompanyManagementProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   
   // Mock data - in real implementation, this would come from Supabase customers table
@@ -129,7 +133,12 @@ const CompanyManagement = () => {
                 </div>
                 
                 <div className="flex items-center space-x-2 ml-4">
-                  <Button variant="outline" size="sm" className="flex items-center space-x-1">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex items-center space-x-1"
+                    onClick={() => onCompanySelect?.(company.id)}
+                  >
                     <Eye className="w-3 h-3" />
                     <span>View</span>
                   </Button>

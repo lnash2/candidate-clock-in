@@ -1,83 +1,80 @@
-
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Building2, Users, MessageSquare, DollarSign, Calendar, BarChart3 } from 'lucide-react';
+import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
+import AppSidebar from './AppSidebar';
 import CompanyManagement from './crm/CompanyManagement';
 import ContactManagement from './crm/ContactManagement';
 import CommunicationTracking from './crm/CommunicationTracking';
 import RateManagement from './crm/RateManagement';
 import BookingManagement from './crm/BookingManagement';
 import CRMOverview from './crm/CRMOverview';
+import CompanyDetail from './crm/CompanyDetail';
 
 const CRMDashboard = () => {
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeSection, setActiveSection] = useState('overview');
+  const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null);
+
+  const handleCompanySelect = (companyId: number) => {
+    setSelectedCompanyId(companyId);
+  };
+
+  const handleBackToCompanies = () => {
+    setSelectedCompanyId(null);
+    setActiveSection('companies');
+  };
+
+  const renderContent = () => {
+    // If a company is selected, show company detail view
+    if (selectedCompanyId !== null) {
+      return (
+        <CompanyDetail
+          companyId={selectedCompanyId}
+          onBack={handleBackToCompanies}
+        />
+      );
+    }
+
+    // Otherwise show the main section content
+    switch (activeSection) {
+      case 'overview':
+        return <CRMOverview />;
+      case 'companies':
+        return <CompanyManagement onCompanySelect={handleCompanySelect} />;
+      case 'contacts':
+        return <ContactManagement />;
+      case 'communications':
+        return <CommunicationTracking />;
+      case 'rates':
+        return <RateManagement />;
+      case 'bookings':
+        return <BookingManagement />;
+      default:
+        return <CRMOverview />;
+    }
+  };
 
   return (
-    <div className="p-6">
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold flex items-center space-x-2">
-          <Building2 className="w-6 h-6" />
-          <span>CRM Dashboard</span>
-        </CardTitle>
-      </CardHeader>
-      
-      <CardContent>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="overview" className="flex items-center space-x-2">
-              <BarChart3 className="w-4 h-4" />
-              <span>Overview</span>
-            </TabsTrigger>
-            <TabsTrigger value="companies" className="flex items-center space-x-2">
-              <Building2 className="w-4 h-4" />
-              <span>Companies</span>
-            </TabsTrigger>
-            <TabsTrigger value="contacts" className="flex items-center space-x-2">
-              <Users className="w-4 h-4" />
-              <span>Contacts</span>
-            </TabsTrigger>
-            <TabsTrigger value="communications" className="flex items-center space-x-2">
-              <MessageSquare className="w-4 h-4" />
-              <span>Communications</span>
-            </TabsTrigger>
-            <TabsTrigger value="rates" className="flex items-center space-x-2">
-              <DollarSign className="w-4 h-4" />
-              <span>Rates</span>
-            </TabsTrigger>
-            <TabsTrigger value="bookings" className="flex items-center space-x-2">
-              <Calendar className="w-4 h-4" />
-              <span>Bookings</span>
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="mt-6">
-            <CRMOverview />
-          </TabsContent>
-
-          <TabsContent value="companies" className="mt-6">
-            <CompanyManagement />
-          </TabsContent>
-
-          <TabsContent value="contacts" className="mt-6">
-            <ContactManagement />
-          </TabsContent>
-
-          <TabsContent value="communications" className="mt-6">
-            <CommunicationTracking />
-          </TabsContent>
-
-          <TabsContent value="rates" className="mt-6">
-            <RateManagement />
-          </TabsContent>
-
-          <TabsContent value="bookings" className="mt-6">
-            <BookingManagement />
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </div>
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full">
+        <AppSidebar
+          activeSection={activeSection}
+          onSectionChange={setActiveSection}
+        />
+        <SidebarInset>
+          <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+            <SidebarTrigger className="-ml-1" />
+            <div className="flex items-center space-x-2">
+              <h1 className="text-lg font-semibold">
+                {selectedCompanyId !== null ? 'Company Details' : 
+                 activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}
+              </h1>
+            </div>
+          </header>
+          <div className="flex flex-1 flex-col gap-4 p-4">
+            {renderContent()}
+          </div>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 };
 
