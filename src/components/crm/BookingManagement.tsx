@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
@@ -142,8 +143,8 @@ const BookingManagement = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="h-full flex flex-col">
+      <div className="flex justify-between items-center p-4 border-b bg-white">
         <div>
           <h2 className="text-2xl font-bold">Booking Management</h2>
           <p className="text-muted-foreground">Track and manage all transportation bookings</p>
@@ -172,36 +173,44 @@ const BookingManagement = () => {
         </div>
       </div>
 
-      {/* Open Bookings Section - Always visible */}
-      <OpenBookingsSection
-        bookings={openBookings}
-        onAssignCandidate={handleAssignCandidate}
-        onEditBooking={handleEditBooking}
-      />
+      <div className="flex-1 overflow-hidden">
+        {/* Open Bookings Section - Always visible */}
+        <div className="p-4 border-b bg-gray-50">
+          <OpenBookingsSection
+            bookings={openBookings}
+            onAssignCandidate={handleAssignCandidate}
+            onEditBooking={handleEditBooking}
+          />
+        </div>
 
-      {/* Search and Filter Controls - Only show in list view */}
-      {activeView === 'list' && (
-        <SearchFilters
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          selectedDate={selectedDate}
-          onDateChange={setSelectedDate}
-        />
-      )}
+        {/* Search and Filter Controls - Only show in list view */}
+        {activeView === 'list' && (
+          <div className="p-4 border-b bg-white">
+            <SearchFilters
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              selectedDate={selectedDate}
+              onDateChange={setSelectedDate}
+            />
+          </div>
+        )}
 
-      {/* Main Content - List or Calendar View */}
-      {activeView === 'calendar' ? (
-        <ScheduleGrid
-          bookings={filteredBookings}
-          onBookingClick={handleBookingClick}
-          onCreateBooking={() => setIsCreateDialogOpen(true)}
-        />
-      ) : (
-        <BookingsList
-          bookings={filteredBookings}
-          onViewDetails={handleViewDetails}
-        />
-      )}
+        {/* Main Content - List or Calendar View */}
+        <div className="flex-1 overflow-auto p-4">
+          {activeView === 'calendar' ? (
+            <ScheduleGrid
+              bookings={filteredBookings}
+              onBookingClick={handleBookingClick}
+              onCreateBooking={() => setIsCreateDialogOpen(true)}
+            />
+          ) : (
+            <BookingsList
+              bookings={filteredBookings}
+              onViewDetails={handleViewDetails}
+            />
+          )}
+        </div>
+      </div>
     </div>
   );
 };

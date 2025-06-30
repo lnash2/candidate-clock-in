@@ -35,7 +35,7 @@ const AppSidebar = ({ activeSection, onSectionChange }: AppSidebarProps) => {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="p-4">
+      <SidebarHeader className="p-3">
         <div className="flex items-center space-x-2">
           <Building2 className="w-6 h-6 text-primary" />
           {!isCollapsed && <span className="font-bold text-lg">CRM</span>}
@@ -53,6 +53,7 @@ const AppSidebar = ({ activeSection, onSectionChange }: AppSidebarProps) => {
                     onClick={() => onSectionChange(item.id)}
                     isActive={activeSection === item.id}
                     className="w-full justify-start"
+                    tooltip={isCollapsed ? item.label : undefined}
                   >
                     <item.icon className="w-4 h-4" />
                     {!isCollapsed && <span>{item.label}</span>}
