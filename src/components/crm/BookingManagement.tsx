@@ -1,11 +1,10 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import BookingForm from './BookingForm';
 import OpenBookingsSection from './OpenBookingsSection';
-import BookingCalendar from './BookingCalendar';
+import ScheduleGrid from './booking/ScheduleGrid';
 import BookingStats from './booking/BookingStats';
 import ViewToggle from './booking/ViewToggle';
 import SearchFilters from './booking/SearchFilters';
@@ -17,7 +16,7 @@ const BookingManagement = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [activeView, setActiveView] = useState('list');
 
-  // Updated mock booking data with new fields
+  // Updated mock booking data with candidate_id field
   const bookings = [
     {
       id: 1,
@@ -35,7 +34,7 @@ const BookingManagement = () => {
       isNightShift: false,
       driverClass: 'Class 1',
       bookingType: 'assigned' as const,
-      candidateId: 'cand-001'
+      candidate_id: 'cand-001'
     },
     {
       id: 2,
@@ -53,7 +52,7 @@ const BookingManagement = () => {
       isNightShift: true,
       driverClass: 'Class 2',
       bookingType: 'open' as const,
-      candidateId: null
+      candidate_id: null
     },
     {
       id: 3,
@@ -71,7 +70,7 @@ const BookingManagement = () => {
       isNightShift: false,
       driverClass: 'Class 1',
       bookingType: 'assigned' as const,
-      candidateId: 'cand-002'
+      candidate_id: 'cand-002'
     },
     {
       id: 4,
@@ -89,10 +88,11 @@ const BookingManagement = () => {
       isNightShift: false,
       driverClass: 'Class 1',
       bookingType: 'open' as const,
-      candidateId: null
+      candidate_id: null
     }
   ];
 
+  // Updated mock booking data with new fields
   const openBookings = bookings.filter(booking => booking.bookingType === 'open');
   const assignedBookings = bookings.filter(booking => booking.bookingType === 'assigned');
 
@@ -189,9 +189,8 @@ const BookingManagement = () => {
 
       {/* Main Content - List or Calendar View */}
       {activeView === 'calendar' ? (
-        <BookingCalendar
+        <ScheduleGrid
           bookings={filteredBookings}
-          onDateSelect={handleDateSelect}
           onBookingClick={handleBookingClick}
         />
       ) : (
