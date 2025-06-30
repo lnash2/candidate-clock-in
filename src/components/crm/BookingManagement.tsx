@@ -4,13 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Calendar, Search, Filter, Eye, MapPin, Clock } from 'lucide-react';
+import { Calendar, Search, Filter, Eye, MapPin, Clock, Plus, Moon, Sun } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import BookingForm from './BookingForm';
 
 const BookingManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDate, setSelectedDate] = useState('2024-01-01');
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  // Mock booking data - this would come from your bookings table
+  // Updated mock booking data with night shift information
   const bookings = [
     {
       id: 1,
@@ -24,7 +27,9 @@ const BookingManagement = () => {
       routeDistance: 45.2,
       vehicle: 'Mercedes Sprinter - ABC123',
       driver: 'John Smith',
-      notes: 'Premium transport for race day. VIP service required.'
+      notes: 'Premium transport for race day. VIP service required.',
+      isNightShift: false,
+      driverClass: 'Class 1'
     },
     {
       id: 2,
@@ -38,7 +43,9 @@ const BookingManagement = () => {
       routeDistance: 120.5,
       vehicle: 'Ford Transit - DEF456',
       driver: 'Sarah Johnson',
-      notes: 'Training camp transport. Multiple horses.'
+      notes: 'Training camp transport. Multiple horses.',
+      isNightShift: true,
+      driverClass: 'Class 2'
     },
     {
       id: 3,
@@ -52,7 +59,9 @@ const BookingManagement = () => {
       routeDistance: 8.3,
       vehicle: 'Iveco Daily - GHI789',
       driver: 'Mike Thompson',
-      notes: 'Short local transfer. Return journey next day.'
+      notes: 'Short local transfer. Return journey next day.',
+      isNightShift: false,
+      driverClass: 'Class 1'
     }
   ];
 
@@ -73,6 +82,12 @@ const BookingManagement = () => {
     booking.dropoffLocation.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleCreateBooking = (bookingData: any) => {
+    console.log('Creating booking:', bookingData);
+    setIsCreateDialogOpen(false);
+    // Here you would typically save to your database
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -80,6 +95,24 @@ const BookingManagement = () => {
           <h2 className="text-2xl font-bold">Booking Management</h2>
           <p className="text-muted-foreground">Track and manage all transportation bookings</p>
         </div>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              Create Booking
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Create New Booking</DialogTitle>
+            </DialogHeader>
+            <BookingForm
+              customerId="sample-customer-id"
+              onSubmit={handleCreateBooking}
+              onCancel={() => setIsCreateDialogOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4">
@@ -115,6 +148,20 @@ const BookingManagement = () => {
                   <Badge className={getStatusColor(booking.status)}>
                     {booking.status.replace('_', ' ')}
                   </Badge>
+                  <Badge variant="outline" className="flex items-center space-x-1">
+                    {booking.isNightShift ? (
+                      <>
+                        <Moon className="w-3 h-3" />
+                        <span>Night Shift</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sun className="w-3 h-3" />
+                        <span>Day Shift</span>
+                      </>
+                    )}
+                  </Badge>
+                  <Badge variant="secondary">{booking.driverClass}</Badge>
                 </div>
                 <Button variant="outline" size="sm" className="flex items-center space-x-1">
                   <Eye className="w-3 h-3" />

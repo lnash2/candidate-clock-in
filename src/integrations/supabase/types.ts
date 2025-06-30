@@ -18,6 +18,7 @@ export type Database = {
           end_date: string
           estimated_duration: number | null
           id: string
+          is_night_shift: boolean | null
           notes: string | null
           organization_id: string | null
           pickup_coordinates: Json | null
@@ -36,6 +37,7 @@ export type Database = {
           end_date: string
           estimated_duration?: number | null
           id?: string
+          is_night_shift?: boolean | null
           notes?: string | null
           organization_id?: string | null
           pickup_coordinates?: Json | null
@@ -54,6 +56,7 @@ export type Database = {
           end_date?: string
           estimated_duration?: number | null
           id?: string
+          is_night_shift?: boolean | null
           notes?: string | null
           organization_id?: string | null
           pickup_coordinates?: Json | null
@@ -98,6 +101,7 @@ export type Database = {
           id: string
           is_active: boolean
           pay_rate: number
+          rate_category: string
           updated_at: string
           valid_from: string
           valid_to: string | null
@@ -111,6 +115,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           pay_rate: number
+          rate_category?: string
           updated_at?: string
           valid_from?: string
           valid_to?: string | null
@@ -124,6 +129,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           pay_rate?: number
+          rate_category?: string
           updated_at?: string
           valid_from?: string
           valid_to?: string | null
