@@ -1,23 +1,24 @@
-
 import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, Clock } from 'lucide-react';
 
+interface BasicBookingFormData {
+  start_date: string;
+  start_time: string;
+  end_date: string;
+  end_time: string;
+  role: string;
+  driver_class: string;
+  booking_type: string;
+  day_type: string;
+  booking_status: string;
+}
+
 interface BasicBookingFieldsProps {
-  formData: {
-    start_date: string;
-    start_time: string;
-    end_date: string;
-    end_time: string;
-    role: string;
-    driver_class: string;
-    booking_type: string;
-    day_type: string;
-    booking_status: string;
-  };
-  onUpdate: (updates: Partial<typeof formData>) => void;
+  formData: BasicBookingFormData;
+  onUpdate: (updates: Partial<BasicBookingFormData>) => void;
 }
 
 const BasicBookingFields = ({ formData, onUpdate }: BasicBookingFieldsProps) => {

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -6,15 +5,17 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DollarSign, Star } from 'lucide-react';
 
+interface RateFormData {
+  pay_rate: string;
+  amended_pay_rate: string;
+  charge_rate: string;
+  expenses: string;
+  holiday_accrual: boolean;
+}
+
 interface RateFieldsProps {
-  formData: {
-    pay_rate: string;
-    amended_pay_rate: string;
-    charge_rate: string;
-    expenses: string;
-    holiday_accrual: boolean;
-  };
-  onUpdate: (updates: Partial<typeof formData>) => void;
+  formData: RateFormData;
+  onUpdate: (updates: Partial<RateFormData>) => void;
   ratePreview?: {
     charge_rate: number;
     pay_rate: number;

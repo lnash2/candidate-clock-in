@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -27,16 +26,18 @@ interface WorkLocation {
   is_primary?: boolean;
 }
 
+interface CustomerSelectionFormData {
+  candidate_id: string;
+  customer_id: string;
+  work_location_id: string;
+  contact_name: string;
+  contact_phone: string;
+  contact_email: string;
+}
+
 interface CustomerSelectionFieldsProps {
-  formData: {
-    candidate_id: string;
-    customer_id: string;
-    work_location_id: string;
-    contact_name: string;
-    contact_phone: string;
-    contact_email: string;
-  };
-  onUpdate: (updates: Partial<typeof formData>) => void;
+  formData: CustomerSelectionFormData;
+  onUpdate: (updates: Partial<CustomerSelectionFormData>) => void;
   candidates: Candidate[];
   customers: Customer[];
   workLocations: WorkLocation[];
