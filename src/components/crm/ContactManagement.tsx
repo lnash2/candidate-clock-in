@@ -65,8 +65,8 @@ const ContactManagement = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="h-full bg-white pl-5 pr-6 py-4">
+      <div className="flex justify-between items-center mb-4">
         <div>
           <h2 className="text-2xl font-bold">Contact Management</h2>
           <p className="text-muted-foreground">Manage individual contacts within companies</p>
@@ -77,7 +77,7 @@ const ContactManagement = () => {
         </Button>
       </div>
 
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-4 mb-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <Input
@@ -89,7 +89,7 @@ const ContactManagement = () => {
         </div>
       </div>
 
-      <div className="grid gap-4">
+      <div className="grid gap-3">
         {filteredContacts.map(contact => (
           <Card key={contact.id} className="hover:shadow-md transition-shadow">
             <CardContent className="p-6">

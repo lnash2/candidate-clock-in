@@ -96,8 +96,8 @@ const CommunicationTracking = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="h-full bg-white pl-5 pr-6 py-4">
+      <div className="flex justify-between items-center mb-4">
         <div>
           <h2 className="text-2xl font-bold">Communication Tracking</h2>
           <p className="text-muted-foreground">Track all interactions with clients and prospects</p>
@@ -108,7 +108,7 @@ const CommunicationTracking = () => {
         </Button>
       </div>
 
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-4 mb-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <Input
@@ -120,7 +120,7 @@ const CommunicationTracking = () => {
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {filteredCommunications.map(comm => (
           <Card key={comm.id} className="hover:shadow-md transition-shadow">
             <CardContent className="p-6">
