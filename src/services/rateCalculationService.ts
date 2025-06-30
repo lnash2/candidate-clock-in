@@ -24,42 +24,22 @@ export class RateCalculationService {
       // Determine rate category based on shift type and day type
       const rateCategory = this.getRateCategory(dayType, shiftType);
       
-      // First, try to find customer-specific rate
-      let { data: companyRates, error } = await supabase
+      // Find customer-specific rate
+      const { data: companyRates, error } = await supabase
         .from('company_rates')
         .select('*')
         .eq('customer_id', customerId)
         .eq('driver_class', driverClass)
         .eq('rate_category', rateCategory)
         .eq('is_active', true)
-        .lte('valid_from', startDate)
-        .gte('valid_to', endDate)
-        .order('valid_from', { ascending: false })
+        .lte('effective_from', startDate)
+        .or(`effective_to.is.null,effective_to.gte.${endDate}`)
+        .order('effective_from', { ascending: false })
         .limit(1);
 
       if (error) throw error;
 
-      // If no customer-specific rate found, try to find default rate
-      if (!companyRates || companyRates.length === 0) {
-        const { data: defaultRates, error: defaultError } = await supabase
-          .from('day_type_rates')
-          .select('*')
-          .eq('day_type', rateCategory);
-
-        if (defaultError) throw defaultError;
-        
-        if (defaultRates && defaultRates.length > 0) {
-          const defaultRate = defaultRates[0];
-          return {
-            charge_rate: defaultRate.charge_rate,
-            pay_rate: defaultRate.pay_rate,
-            margin: defaultRate.charge_rate - defaultRate.pay_rate,
-            margin_percent: ((defaultRate.charge_rate - defaultRate.pay_rate) / defaultRate.charge_rate) * 100,
-            rate_description: `Default ${rateCategory} rate`,
-            rate_category: rateCategory
-          };
-        }
-      } else {
+      if (companyRates && companyRates.length > 0) {
         const rate = companyRates[0];
         return {
           charge_rate: rate.charge_rate,
@@ -72,6 +52,8 @@ export class RateCalculationService {
         };
       }
 
+      // If no customer-specific rate found, return null
+      // In a real application, you might want to have default rates
       return null;
     } catch (error) {
       console.error('Error calculating rates:', error);
@@ -88,9 +70,9 @@ export class RateCalculationService {
       case 'sunday':
         return 'sunday';
       case 'bank_holiday':
-        return 'bank_holiday';
+        return 'sunday'; // Use sunday rates for bank holidays
       default:
-        return 'weekday';
+        return 'days';
     }
   }
 
@@ -157,7 +139,7 @@ export class RateCalculationService {
       
       // Get unique driver classes
       const uniqueClasses = [...new Set(data?.map(rate => rate.driver_class) || [])];
-      return uniqueClasses;
+      return uniqueClasses.length > 0 ? uniqueClasses : ['Class 1', 'Class 2', 'Class 3', 'Specialist', 'Trainee'];
     } catch (error) {
       console.error('Error fetching driver classes:', error);
       return ['Class 1', 'Class 2', 'Class 3', 'Specialist', 'Trainee']; // fallback
