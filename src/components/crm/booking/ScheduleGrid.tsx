@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -283,10 +284,10 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <div className="min-w-[1400px]">
+            <div className="min-w-[1800px]">
               {/* Header row with dates */}
-              <div className="grid grid-cols-8 gap-px bg-gray-200">
-                <div className="p-3 font-semibold text-sm bg-gray-50 border-r">
+              <div className="flex bg-gray-200">
+                <div className="w-[420px] p-3 font-semibold text-sm bg-gray-50 border-r">
                   <div className="flex items-center cursor-pointer hover:bg-gray-100 p-1 rounded" onClick={handleSort}>
                     <User className="w-4 h-4 mr-2" />
                     <span>Candidate Details</span>
@@ -296,7 +297,7 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                 {weekDays.map((date) => (
                   <div
                     key={date.toISOString()}
-                    className={`p-2 text-center text-xs font-medium min-w-[140px] ${
+                    className={`flex-1 p-2 text-center text-xs font-medium min-w-[140px] ${
                       isSameDay(date, new Date()) ? 'bg-blue-50 text-blue-700' : 'bg-gray-50'
                     }`}
                   >
@@ -308,14 +309,14 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
 
               {/* Candidate rows - HORIZONTAL single line layout */}
               {candidates.map((candidate) => (
-                <div key={candidate.id} className="grid grid-cols-8 gap-px bg-gray-200 border-b">
-                  {/* Single line candidate details - HORIZONTAL layout */}
-                  <div className="p-2 bg-white border-r flex items-center justify-between h-12">
+                <div key={candidate.id} className="flex bg-gray-200 border-b">
+                  {/* Expanded candidate details - HORIZONTAL layout with full info */}
+                  <div className="w-[420px] p-2 bg-white border-r flex items-center justify-between h-12">
                     <CandidateInfoPopover candidate={candidate}>
-                      <div className="cursor-pointer hover:bg-gray-50 p-1 rounded flex-1 min-w-0 flex items-center space-x-4">
-                        {/* Name and Driver Class - side by side */}
-                        <div className="flex items-center space-x-2 min-w-0">
-                          <div className="font-semibold text-sm text-blue-600 hover:text-blue-800 truncate">
+                      <div className="cursor-pointer hover:bg-gray-50 p-1 rounded flex-1 min-w-0 flex items-center space-x-3">
+                        {/* Name and Driver Class */}
+                        <div className="flex items-center space-x-2 min-w-0 flex-shrink-0">
+                          <div className="font-semibold text-sm text-blue-600 hover:text-blue-800 truncate max-w-[80px]">
                             {candidate.name}
                           </div>
                           <Badge variant="outline" className="text-xs px-1 py-0 h-4 flex-shrink-0">
@@ -323,22 +324,29 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                           </Badge>
                         </div>
                         
-                        {/* Contact Information - horizontal */}
-                        <div className="text-xs text-gray-600 truncate min-w-0">
+                        {/* Phone Number */}
+                        <div className="text-xs text-gray-600 truncate min-w-0 flex-shrink-0 max-w-[90px]">
                           {candidate.phone}
                         </div>
                         
-                        {/* Location - horizontal */}
-                        <div className="text-xs text-gray-500 truncate min-w-0">
+                        {/* Location */}
+                        <div className="text-xs text-gray-500 truncate min-w-0 flex-shrink-0 max-w-[80px]">
                           {candidate.location}
                         </div>
                         
-                        {/* Primary Job Category - horizontal */}
-                        <div className="text-xs flex-shrink-0">
+                        {/* Job Categories */}
+                        <div className="text-xs flex-shrink-0 max-w-[120px]">
                           {candidate.jobCategories && candidate.jobCategories.length > 0 && (
-                            <Badge variant="secondary" className="text-xs px-1 py-0 h-4">
-                              {candidate.jobCategories[0]}
-                            </Badge>
+                            <div className="flex flex-wrap gap-1">
+                              {candidate.jobCategories.slice(0, 2).map((category, index) => (
+                                <Badge key={index} variant="secondary" className="text-xs px-1 py-0 h-4">
+                                  {category}
+                                </Badge>
+                              ))}
+                              {candidate.jobCategories.length > 2 && (
+                                <span className="text-xs text-gray-400">+{candidate.jobCategories.length - 2}</span>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>
@@ -361,7 +369,7 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                     return (
                       <div
                         key={`${candidate.id}-${date.toISOString()}`}
-                        className="bg-white h-12 flex items-center justify-center"
+                        className="flex-1 bg-white h-12 flex items-center justify-center"
                       >
                         {booking ? (
                           // Show booking in full cell
