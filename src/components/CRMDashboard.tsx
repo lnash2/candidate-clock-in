@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import AppSidebar from './AppSidebar';
@@ -9,6 +10,7 @@ import RateManagement from './crm/RateManagement';
 import BookingManagement from './crm/BookingManagement';
 import CRMOverview from './crm/CRMOverview';
 import CompanyDetail from './crm/CompanyDetail';
+import Settings from './crm/Settings';
 
 const CRMDashboard = () => {
   const [activeSection, setActiveSection] = useState('overview');
@@ -50,9 +52,16 @@ const CRMDashboard = () => {
         return <RateManagement />;
       case 'bookings':
         return <BookingManagement />;
+      case 'settings':
+        return <Settings />;
       default:
         return <CRMOverview />;
     }
+  };
+
+  const getSectionTitle = () => {
+    if (selectedCompanyId !== null) return 'Company Details';
+    return activeSection.charAt(0).toUpperCase() + activeSection.slice(1);
   };
 
   return (
@@ -66,8 +75,7 @@ const CRMDashboard = () => {
           <header className="flex h-12 shrink-0 items-center border-b bg-white">
             <div className="flex items-center pl-5">
               <h1 className="text-lg font-semibold">
-                {selectedCompanyId !== null ? 'Company Details' : 
-                 activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}
+                {getSectionTitle()}
               </h1>
             </div>
           </header>
