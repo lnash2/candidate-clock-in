@@ -189,19 +189,19 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <div className="min-w-[1200px]">
+            <div className="min-w-[1000px]">
               {/* Header row with dates */}
               <div className="grid grid-cols-8 gap-px bg-gray-200">
-                <div className="p-4 font-semibold text-sm bg-gray-50 border-r">
-                  <div className="flex items-center space-x-2">
-                    <User className="w-4 h-4" />
+                <div className="p-2 font-semibold text-xs bg-gray-50 border-r min-w-[180px]">
+                  <div className="flex items-center space-x-1">
+                    <User className="w-3 h-3" />
                     <span>Candidate</span>
                   </div>
                 </div>
                 {weekDays.map((date) => (
                   <div
                     key={date.toISOString()}
-                    className={`p-4 text-center text-sm font-medium ${
+                    className={`p-2 text-center text-xs font-medium min-w-[120px] ${
                       isSameDay(date, new Date()) ? 'bg-blue-50 text-blue-700' : 'bg-gray-50'
                     }`}
                   >
@@ -214,18 +214,20 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
               {/* Candidate rows */}
               {candidates.map((candidate) => (
                 <div key={candidate.id} className="grid grid-cols-8 gap-px bg-gray-200 border-b">
-                  <div className="p-3 bg-white border-r flex items-center justify-between">
+                  <div className="p-2 bg-white border-r flex items-center justify-between min-h-[45px]">
                     <CandidateInfoPopover candidate={candidate}>
-                      <div className="cursor-pointer hover:bg-gray-50 p-2 rounded flex-1">
-                        <div className="font-medium text-sm">{candidate.name}</div>
-                        <Badge variant="outline" className="text-xs mt-1">
-                          {candidate.driverClass}
-                        </Badge>
+                      <div className="cursor-pointer hover:bg-gray-50 p-1 rounded flex-1 min-w-0">
+                        <div className="font-medium text-xs truncate">{candidate.name}</div>
+                        <div className="flex items-center space-x-1 mt-0.5">
+                          <Badge variant="outline" className="text-xs px-1 py-0 text-xs h-4">
+                            {candidate.driverClass}
+                          </Badge>
+                        </div>
                         {candidate.jobCategories && (
-                          <div className="mt-1">
-                            {candidate.jobCategories.slice(0, 2).map((category, index) => (
-                              <Badge key={index} variant="secondary" className="text-xs mr-1">
-                                {category}
+                          <div className="mt-0.5 flex flex-wrap gap-0.5">
+                            {candidate.jobCategories.slice(0, 1).map((category, index) => (
+                              <Badge key={index} variant="secondary" className="text-xs px-1 py-0 h-4 text-xs">
+                                {category.substring(0, 8)}...
                               </Badge>
                             ))}
                           </div>
@@ -236,7 +238,7 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                       variant="ghost"
                       size="sm"
                       onClick={() => handleAddCandidateNote(candidate)}
-                      className="h-6 w-6 p-0 ml-2"
+                      className="h-5 w-5 p-0 ml-1"
                     >
                       <StickyNote className="w-3 h-3" />
                     </Button>
@@ -246,20 +248,20 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                     return (
                       <div
                         key={`${candidate.id}-${date.toISOString()}`}
-                        className="p-2 min-h-[100px] bg-white hover:bg-gray-50 relative"
+                        className="p-1 min-h-[45px] bg-white hover:bg-gray-50 relative"
                       >
                         {booking ? (
                           <div
-                            className={`p-2 rounded cursor-pointer text-xs h-full ${getStatusColor(booking.status, booking.bookingType)} relative`}
+                            className={`p-1 rounded cursor-pointer text-xs h-full ${getStatusColor(booking.status, booking.bookingType)} relative`}
                             onClick={() => onBookingClick(booking)}
                           >
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="font-medium truncate">{booking.customer}</span>
-                              <div className="flex items-center space-x-1">
+                            <div className="flex items-center justify-between mb-0.5">
+                              <span className="font-medium truncate text-xs">{booking.customer}</span>
+                              <div className="flex items-center space-x-0.5">
                                 {booking.isNightShift ? (
-                                  <Moon className="w-3 h-3" />
+                                  <Moon className="w-2.5 h-2.5" />
                                 ) : (
-                                  <Sun className="w-3 h-3" />
+                                  <Sun className="w-2.5 h-2.5" />
                                 )}
                                 <BookingActionsMenu
                                   bookingId={booking.id}
@@ -271,25 +273,25 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                                 />
                               </div>
                             </div>
-                            <div className="text-xs text-gray-600 truncate mb-1">
+                            <div className="text-xs text-gray-600 truncate mb-0.5">
                               {booking.pickupLocation}
                             </div>
                             <Badge 
                               variant={booking.bookingType === 'open' ? 'destructive' : 'secondary'}
-                              className="text-xs"
+                              className="text-xs px-1 py-0 h-4"
                             >
                               {booking.bookingType === 'open' ? 'Open' : 'Assigned'}
                             </Badge>
                           </div>
                         ) : (
-                          <div className="h-full flex items-center justify-center text-gray-400 text-xs border-2 border-dashed border-gray-200 rounded">
+                          <div className="h-full flex items-center justify-center text-gray-400 text-xs border border-dashed border-gray-200 rounded">
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={onCreateBooking}
-                              className="text-xs text-gray-500 hover:text-gray-700 h-auto p-2"
+                              className="text-xs text-gray-500 hover:text-gray-700 h-auto p-1"
                             >
-                              <Plus className="w-3 h-3 mr-1" />
+                              <Plus className="w-2.5 h-2.5 mr-0.5" />
                               Add
                             </Button>
                           </div>
