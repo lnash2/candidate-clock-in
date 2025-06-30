@@ -179,19 +179,22 @@ const BookingManagement = () => {
         onEditBooking={handleEditBooking}
       />
 
-      {/* Search and Filter Controls */}
-      <SearchFilters
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        selectedDate={selectedDate}
-        onDateChange={setSelectedDate}
-      />
+      {/* Search and Filter Controls - Only show in list view */}
+      {activeView === 'list' && (
+        <SearchFilters
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          selectedDate={selectedDate}
+          onDateChange={setSelectedDate}
+        />
+      )}
 
       {/* Main Content - List or Calendar View */}
       {activeView === 'calendar' ? (
         <ScheduleGrid
           bookings={filteredBookings}
           onBookingClick={handleBookingClick}
+          onCreateBooking={() => setIsCreateDialogOpen(true)}
         />
       ) : (
         <BookingsList

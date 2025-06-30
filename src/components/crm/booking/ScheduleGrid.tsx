@@ -3,8 +3,11 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, Moon, Sun } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Moon, Sun, Plus, StickyNote, User } from 'lucide-react';
 import { format, addDays, startOfWeek, isSameDay, parseISO } from 'date-fns';
+import CandidateInfoPopover from './CandidateInfoPopover';
+import AddNoteDialog from './AddNoteDialog';
+import BookingActionsMenu from './BookingActionsMenu';
 
 interface BookingEvent {
   id: number;
@@ -25,23 +28,70 @@ interface Candidate {
   id: string;
   name: string;
   driverClass: string;
+  phone?: string;
+  email?: string;
+  location?: string;
+  jobCategories?: string[];
 }
 
 interface ScheduleGridProps {
   bookings: BookingEvent[];
   onBookingClick: (booking: BookingEvent) => void;
+  onCreateBooking?: () => void;
 }
 
-const ScheduleGrid = ({ bookings, onBookingClick }: ScheduleGridProps) => {
+const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGridProps) => {
   const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
 
-  // Mock candidates data - in real app this would come from props or API
+  // Enhanced mock candidates data with contact information
   const candidates: Candidate[] = [
-    { id: 'cand-001', name: 'John Smith', driverClass: 'Class 1' },
-    { id: 'cand-002', name: 'Mike Thompson', driverClass: 'Class 1' },
-    { id: 'cand-003', name: 'Sarah Wilson', driverClass: 'Class 2' },
-    { id: 'cand-004', name: 'David Brown', driverClass: 'Class 1' },
-    { id: 'cand-005', name: 'Emma Davis', driverClass: 'Class 2' },
+    { 
+      id: 'cand-001', 
+      name: 'John Smith', 
+      driverClass: 'C1 Class 1',
+      phone: '+44 7903 456789',
+      email: 'john.smith@email.com',
+      location: 'London, UK',
+      jobCategories: ['HGV Driver', 'C+E Driver']
+    },
+    { 
+      id: 'cand-002', 
+      name: 'Mike Thompson', 
+      driverClass: 'C1 Class 1',
+      phone: '+44 7912 654321',
+      email: 'mike.thompson@email.com',
+      location: 'Manchester, UK',
+      jobCategories: ['HGV Driver', 'Warehouse Operative']
+    },
+    { 
+      id: 'cand-003', 
+      name: 'Sarah Wilson', 
+      driverClass: 'C1 Class 2',
+      phone: '+44 7845 789012',
+      email: 'sarah.wilson@email.com',
+      location: 'Birmingham, UK',
+      jobCategories: ['C1 Driver', 'Production Operative']
+    },
+    { 
+      id: 'cand-004', 
+      name: 'David Brown', 
+      driverClass: 'C1 Class 1',
+      phone: '+44 7756 345678',
+      email: 'david.brown@email.com',
+      location: 'Leeds, UK',
+      jobCategories: ['HGV Driver', 'Refuse Loader']
+    },
+    { 
+      id: 'cand-005', 
+      name: 'Emma Davis', 
+      driverClass: 'C1 Class 2',
+      phone: '+44 7689 012345',
+      email: 'emma.davis@email.com',
+      location: 'Liverpool, UK',
+      jobCategories: ['C1 Driver', 'Warehouse Operative']
+    },
   ];
 
   // Generate 7 days starting from currentWeekStart
@@ -83,11 +133,38 @@ const ScheduleGrid = ({ bookings, onBookingClick }: ScheduleGridProps) => {
     setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
   };
 
+  const handleAddCandidateNote = (candidate: Candidate) => {
+    setSelectedCandidate(candidate);
+    setNoteDialogOpen(true);
+  };
+
+  const handleAddNote = (candidateId: string, note: string) => {
+    console.log('Adding note for candidate:', candidateId, note);
+    // This would typically call an API to save the note
+  };
+
+  const handleEditBooking = (bookingId: number) => {
+    console.log('Edit booking:', bookingId);
+  };
+
+  const handleDeleteBooking = (bookingId: number) => {
+    console.log('Delete booking:', bookingId);
+  };
+
+  const handleAssignCandidate = (bookingId: number) => {
+    console.log('Assign candidate to booking:', bookingId);
+  };
+
+  const handleAddBookingNote = (bookingId: number) => {
+    console.log('Add note to booking:', bookingId);
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>Schedule Grid</span>
+    <div className="space-y-4">
+      {/* Header with Add Booking Button */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <h2 className="text-xl font-semibold">Schedule Grid</h2>
           <div className="flex items-center space-x-2">
             <Button variant="outline" size="sm" onClick={goToPreviousWeek}>
               <ChevronLeft className="w-4 h-4" />
@@ -102,82 +179,140 @@ const ScheduleGrid = ({ bookings, onBookingClick }: ScheduleGridProps) => {
               {format(currentWeekStart, 'MMM dd')} - {format(addDays(currentWeekStart, 6), 'MMM dd, yyyy')}
             </span>
           </div>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
-          <div className="min-w-[800px]">
-            {/* Header row with dates */}
-            <div className="grid grid-cols-8 gap-1 mb-2">
-              <div className="p-3 font-semibold text-sm bg-gray-50 rounded">
-                Candidate
+        </div>
+        <Button onClick={onCreateBooking} className="bg-blue-600 hover:bg-blue-700">
+          <Plus className="w-4 h-4 mr-2" />
+          Add Booking
+        </Button>
+      </div>
+
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <div className="min-w-[1200px]">
+              {/* Header row with dates */}
+              <div className="grid grid-cols-8 gap-px bg-gray-200">
+                <div className="p-4 font-semibold text-sm bg-gray-50 border-r">
+                  <div className="flex items-center space-x-2">
+                    <User className="w-4 h-4" />
+                    <span>Candidate</span>
+                  </div>
+                </div>
+                {weekDays.map((date) => (
+                  <div
+                    key={date.toISOString()}
+                    className={`p-4 text-center text-sm font-medium ${
+                      isSameDay(date, new Date()) ? 'bg-blue-50 text-blue-700' : 'bg-gray-50'
+                    }`}
+                  >
+                    <div className="font-semibold">{format(date, 'EEE')}</div>
+                    <div className="text-xs text-gray-600">{format(date, 'dd MMM')}</div>
+                  </div>
+                ))}
               </div>
-              {weekDays.map((date) => (
-                <div
-                  key={date.toISOString()}
-                  className={`p-3 text-center text-sm font-medium rounded ${
-                    isSameDay(date, new Date()) ? 'bg-blue-50 text-blue-700' : 'bg-gray-50'
-                  }`}
-                >
-                  <div>{format(date, 'EEE')}</div>
-                  <div className="text-xs">{format(date, 'MMM dd')}</div>
+
+              {/* Candidate rows */}
+              {candidates.map((candidate) => (
+                <div key={candidate.id} className="grid grid-cols-8 gap-px bg-gray-200 border-b">
+                  <div className="p-3 bg-white border-r flex items-center justify-between">
+                    <CandidateInfoPopover candidate={candidate}>
+                      <div className="cursor-pointer hover:bg-gray-50 p-2 rounded flex-1">
+                        <div className="font-medium text-sm">{candidate.name}</div>
+                        <Badge variant="outline" className="text-xs mt-1">
+                          {candidate.driverClass}
+                        </Badge>
+                        {candidate.jobCategories && (
+                          <div className="mt-1">
+                            {candidate.jobCategories.slice(0, 2).map((category, index) => (
+                              <Badge key={index} variant="secondary" className="text-xs mr-1">
+                                {category}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </CandidateInfoPopover>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleAddCandidateNote(candidate)}
+                      className="h-6 w-6 p-0 ml-2"
+                    >
+                      <StickyNote className="w-3 h-3" />
+                    </Button>
+                  </div>
+                  {weekDays.map((date) => {
+                    const booking = getBookingForCandidateAndDate(candidate.id, date);
+                    return (
+                      <div
+                        key={`${candidate.id}-${date.toISOString()}`}
+                        className="p-2 min-h-[100px] bg-white hover:bg-gray-50 relative"
+                      >
+                        {booking ? (
+                          <div
+                            className={`p-2 rounded cursor-pointer text-xs h-full ${getStatusColor(booking.status, booking.bookingType)} relative`}
+                            onClick={() => onBookingClick(booking)}
+                          >
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="font-medium truncate">{booking.customer}</span>
+                              <div className="flex items-center space-x-1">
+                                {booking.isNightShift ? (
+                                  <Moon className="w-3 h-3" />
+                                ) : (
+                                  <Sun className="w-3 h-3" />
+                                )}
+                                <BookingActionsMenu
+                                  bookingId={booking.id}
+                                  isOpen={booking.bookingType === 'open'}
+                                  onEdit={handleEditBooking}
+                                  onDelete={handleDeleteBooking}
+                                  onAssignCandidate={handleAssignCandidate}
+                                  onAddNote={handleAddBookingNote}
+                                />
+                              </div>
+                            </div>
+                            <div className="text-xs text-gray-600 truncate mb-1">
+                              {booking.pickupLocation}
+                            </div>
+                            <Badge 
+                              variant={booking.bookingType === 'open' ? 'destructive' : 'secondary'}
+                              className="text-xs"
+                            >
+                              {booking.bookingType === 'open' ? 'Open' : 'Assigned'}
+                            </Badge>
+                          </div>
+                        ) : (
+                          <div className="h-full flex items-center justify-center text-gray-400 text-xs border-2 border-dashed border-gray-200 rounded">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={onCreateBooking}
+                              className="text-xs text-gray-500 hover:text-gray-700 h-auto p-2"
+                            >
+                              <Plus className="w-3 h-3 mr-1" />
+                              Add
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               ))}
             </div>
-
-            {/* Candidate rows */}
-            {candidates.map((candidate) => (
-              <div key={candidate.id} className="grid grid-cols-8 gap-1 mb-2">
-                <div className="p-3 bg-gray-50 rounded flex flex-col">
-                  <span className="font-medium text-sm">{candidate.name}</span>
-                  <Badge variant="outline" className="text-xs mt-1 w-fit">
-                    {candidate.driverClass}
-                  </Badge>
-                </div>
-                {weekDays.map((date) => {
-                  const booking = getBookingForCandidateAndDate(candidate.id, date);
-                  return (
-                    <div
-                      key={`${candidate.id}-${date.toISOString()}`}
-                      className="p-2 min-h-[80px] border border-gray-200 rounded hover:bg-gray-50"
-                    >
-                      {booking ? (
-                        <div
-                          className={`p-2 rounded cursor-pointer text-xs ${getStatusColor(booking.status, booking.bookingType)}`}
-                          onClick={() => onBookingClick(booking)}
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-medium truncate">{booking.customer}</span>
-                            {booking.isNightShift ? (
-                              <Moon className="w-3 h-3" />
-                            ) : (
-                              <Sun className="w-3 h-3" />
-                            )}
-                          </div>
-                          <div className="text-xs text-gray-600 truncate">
-                            {booking.pickupLocation}
-                          </div>
-                          <Badge 
-                            variant={booking.bookingType === 'open' ? 'destructive' : 'secondary'}
-                            className="text-xs mt-1"
-                          >
-                            {booking.bookingType === 'open' ? 'Open' : 'Assigned'}
-                          </Badge>
-                        </div>
-                      ) : (
-                        <div className="h-full flex items-center justify-center text-gray-400 text-xs">
-                          Available
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      {/* Add Note Dialog */}
+      <AddNoteDialog
+        open={noteDialogOpen}
+        onOpenChange={setNoteDialogOpen}
+        candidateId={selectedCandidate?.id || ''}
+        candidateName={selectedCandidate?.name || ''}
+        onAddNote={handleAddNote}
+      />
+    </div>
   );
 };
 
