@@ -11,8 +11,11 @@ export type Database = {
     Tables: {
       bookings: {
         Row: {
+          booking_type: string | null
+          candidate_id: string | null
           created_at: string
           customer_id: string
+          driver_class: string | null
           dropoff_coordinates: Json | null
           dropoff_location: string | null
           end_date: string
@@ -30,8 +33,11 @@ export type Database = {
           vehicle_id: string
         }
         Insert: {
+          booking_type?: string | null
+          candidate_id?: string | null
           created_at?: string
           customer_id: string
+          driver_class?: string | null
           dropoff_coordinates?: Json | null
           dropoff_location?: string | null
           end_date: string
@@ -49,8 +55,11 @@ export type Database = {
           vehicle_id: string
         }
         Update: {
+          booking_type?: string | null
+          candidate_id?: string | null
           created_at?: string
           customer_id?: string
+          driver_class?: string | null
           dropoff_coordinates?: Json | null
           dropoff_location?: string | null
           end_date?: string
@@ -68,6 +77,13 @@ export type Database = {
           vehicle_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "bookings_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bookings_customer_id_fkey"
             columns: ["customer_id"]
