@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Grid, List } from 'lucide-react';
+import { Calendar, List } from 'lucide-react';
 
 interface ViewToggleProps {
   activeView: string;
@@ -24,7 +24,7 @@ const ViewToggle = ({ activeView, onViewChange }: ViewToggleProps) => {
         size="sm"
         onClick={() => onViewChange('calendar')}
       >
-        <Grid className="w-4 h-4 mr-1" />
+        <Calendar className="w-4 h-4 mr-1" />
         Calendar
       </Button>
     </div>
