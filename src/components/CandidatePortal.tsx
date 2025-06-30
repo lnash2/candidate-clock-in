@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -59,6 +58,35 @@ const CandidatePortal = () => {
     hours: '',
     description: ''
   });
+  const [selectedDate, setSelectedDate] = useState('2024-01-01');
+
+  // Generate date range for the calendar grid
+  const generateDateRange = (startDate: string, days: number) => {
+    const dates = [];
+    const start = new Date(startDate);
+    for (let i = 0; i < days; i++) {
+      const date = new Date(start);
+      date.setDate(start.getDate() + i);
+      dates.push(date.toISOString().split('T')[0]);
+    }
+    return dates;
+  };
+
+  const dateRange = generateDateRange(selectedDate, 7);
+
+  // Mock booking data for calendar view
+  const mockBookings = {
+    1: {
+      '2024-01-01': { client: 'TechCorp', project: 'Web Development', status: 'approved', hours: 8 },
+      '2024-01-02': { client: 'TechCorp', project: 'Web Development', status: 'pending', hours: 7.5 },
+      '2024-01-03': { client: 'TechCorp', project: 'Web Development', status: 'draft', hours: 8 },
+    },
+    2: {
+      '2024-01-01': { client: 'DataFlow Inc', project: 'Backend API', status: 'approved', hours: 8 },
+      '2024-01-02': { client: 'DataFlow Inc', project: 'Backend API', status: 'approved', hours: 8 },
+      '2024-01-04': { client: 'DataFlow Inc', project: 'Backend API', status: 'pending', hours: 6 },
+    },
+  };
 
   const handleSubmitTimesheet = (isDraft = false) => {
     if (!timesheetData.hours || !timesheetData.description) {
@@ -105,11 +133,120 @@ const CandidatePortal = () => {
 
       <CardContent>
         <Tabs defaultValue="entry" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="entry">Timesheet Entry</TabsTrigger>
+            <TabsTrigger value="calendar">Calendar View</TabsTrigger>
             <TabsTrigger value="history">My Timesheets</TabsTrigger>
             <TabsTrigger value="assignments">My Assignments</TabsTrigger>
           </TabsList>
+
+          {/* Calendar View Tab */}
+          <TabsContent value="calendar" className="space-y-6">
+            {/* Date Controls */}
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">My Booking Calendar</h3>
+              <div className="flex items-center space-x-2">
+                <Calendar className="w-4 h-4 text-gray-500" />
+                <Input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="w-40"
+                />
+              </div>
+            </div>
+
+            {/* Calendar Grid */}
+            <div className="overflow-x-auto">
+              <div className="min-w-full">
+                {/* Header */}
+                <div className="grid grid-cols-8 gap-2 mb-4 p-3 bg-gray-50 rounded-lg font-medium text-sm">
+                  <div className="font-semibold">Assignment</div>
+                  {dateRange.map(date => (
+                    <div key={date} className="font-semibold text-center">
+                      {new Date(date).toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric' 
+                      })}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Assignment Rows */}
+                <div className="space-y-3">
+                  {mockAssignments.map(assignment => (
+                    <div key={assignment.id} className="grid grid-cols-8 gap-2 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                      {/* Assignment Info */}
+                      <div className="flex flex-col">
+                        <div className="font-medium text-sm">{assignment.client}</div>
+                        <div className="text-xs text-gray-600">{assignment.project}</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          ${assignment.hourlyRate}/hr
+                        </div>
+                      </div>
+
+                      {/* Date Columns */}
+                      {dateRange.map(date => {
+                        const booking = mockBookings[assignment.id]?.[date];
+                        return (
+                          <div key={date} className="text-center">
+                            {booking ? (
+                              <div className="space-y-1">
+                                <Badge className={`text-xs ${getStatusColor(booking.status)}`}>
+                                  {booking.status}
+                                </Badge>
+                                <div className="text-xs font-medium">
+                                  {booking.hours}h
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-gray-300 text-xs">-</div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+              <Card className="bg-green-50">
+                <CardContent className="p-4 text-center">
+                  <div className="text-xl font-bold text-green-600">
+                    {Object.values(mockBookings).reduce((acc, assignmentBookings) => 
+                      acc + Object.values(assignmentBookings).filter(b => b.status === 'approved').length, 0
+                    )}
+                  </div>
+                  <div className="text-sm text-green-700">Approved Entries</div>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-yellow-50">
+                <CardContent className="p-4 text-center">
+                  <div className="text-xl font-bold text-yellow-600">
+                    {Object.values(mockBookings).reduce((acc, assignmentBookings) => 
+                      acc + Object.values(assignmentBookings).filter(b => b.status === 'pending').length, 0
+                    )}
+                  </div>
+                  <div className="text-sm text-yellow-700">Pending Approval</div>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-blue-50">
+                <CardContent className="p-4 text-center">
+                  <div className="text-xl font-bold text-blue-600">
+                    {Object.values(mockBookings).reduce((acc, assignmentBookings) => 
+                      acc + Object.values(assignmentBookings).reduce((sum, booking) => sum + booking.hours, 0), 0
+                    )}
+                  </div>
+                  <div className="text-sm text-blue-700">Total Hours This Week</div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
 
           {/* Timesheet Entry Tab */}
           <TabsContent value="entry" className="space-y-6">

@@ -1,11 +1,10 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CheckCircle, XCircle, Eye, Filter, Search, Users } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, Filter, Search, Users, Calendar } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 // Mock data for hiring manager's company candidates and timesheets
@@ -79,6 +78,45 @@ const mockPendingTimesheets = [
 const HiringManagerPortal = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [pendingTimesheets, setPendingTimesheets] = useState(mockPendingTimesheets);
+  const [selectedDate, setSelectedDate] = useState('2024-01-01');
+
+  // Generate date range for the calendar grid
+  const generateDateRange = (startDate: string, days: number) => {
+    const dates = [];
+    const start = new Date(startDate);
+    for (let i = 0; i < days; i++) {
+      const date = new Date(start);
+      date.setDate(start.getDate() + i);
+      dates.push(date.toISOString().split('T')[0]);
+    }
+    return dates;
+  };
+
+  const dateRange = generateDateRange(selectedDate, 7);
+
+  // Mock booking data for calendar view
+  const mockBookings = {
+    1: {
+      '2024-01-01': { project: 'Web Development', status: 'active', hours: 8 },
+      '2024-01-02': { project: 'Web Development', status: 'active', hours: 7.5 },
+      '2024-01-03': { project: 'Web Development', status: 'pending', hours: 8 },
+    },
+    2: {
+      '2024-01-01': { project: 'Backend API', status: 'active', hours: 8 },
+      '2024-01-02': { project: 'Backend API', status: 'active', hours: 8 },
+      '2024-01-04': { project: 'Backend API', status: 'pending', hours: 6 },
+    },
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'approved': return 'bg-green-100 text-green-800';
+      case 'active': return 'bg-blue-100 text-blue-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'rejected': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
 
   const handleTimesheetAction = (timesheetId: number, action: 'approve' | 'reject') => {
     setPendingTimesheets(prev => 
@@ -94,15 +132,6 @@ const HiringManagerPortal = () => {
       description: `The timesheet has been ${action}d successfully.`,
       variant: action === 'approve' ? 'default' : 'destructive'
     });
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'approved': return 'bg-green-100 text-green-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'rejected': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
   };
 
   const filteredCandidates = mockCompanyCandidates.filter(candidate =>
@@ -127,8 +156,9 @@ const HiringManagerPortal = () => {
 
       <CardContent>
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Team Overview</TabsTrigger>
+            <TabsTrigger value="calendar">Calendar View</TabsTrigger>
             <TabsTrigger value="approvals" className="relative">
               Pending Approvals
               {filteredPendingTimesheets.length > 0 && (
@@ -139,6 +169,88 @@ const HiringManagerPortal = () => {
             </TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
+
+          {/* Calendar View Tab */}
+          <TabsContent value="calendar" className="space-y-6">
+            {/* Search and Date Controls */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    placeholder="Search candidates..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Calendar className="w-4 h-4 text-gray-500" />
+                <Input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="w-40"
+                />
+              </div>
+            </div>
+
+            {/* Calendar Grid */}
+            <div className="overflow-x-auto">
+              <div className="min-w-full">
+                {/* Header */}
+                <div className="grid grid-cols-8 gap-2 mb-4 p-3 bg-gray-50 rounded-lg font-medium text-sm">
+                  <div className="font-semibold">Candidate</div>
+                  {dateRange.map(date => (
+                    <div key={date} className="font-semibold text-center">
+                      {new Date(date).toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric' 
+                      })}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Candidate Rows */}
+                <div className="space-y-3">
+                  {filteredCandidates.map(candidate => (
+                    <div key={candidate.id} className="grid grid-cols-8 gap-2 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                      {/* Candidate Info */}
+                      <div className="flex flex-col">
+                        <div className="font-medium text-sm">{candidate.name}</div>
+                        <div className="text-xs text-gray-500">{candidate.email}</div>
+                        <div className="text-xs text-gray-600 mt-1">
+                          {candidate.assignment.project}
+                        </div>
+                      </div>
+
+                      {/* Date Columns */}
+                      {dateRange.map(date => {
+                        const booking = mockBookings[candidate.id]?.[date];
+                        return (
+                          <div key={date} className="text-center">
+                            {booking ? (
+                              <div className="space-y-1">
+                                <Badge className={`text-xs ${getStatusColor(booking.status)}`}>
+                                  {booking.status}
+                                </Badge>
+                                <div className="text-xs font-medium">
+                                  {booking.hours}h
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-gray-300 text-xs">-</div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </TabsContent>
 
           {/* Team Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
