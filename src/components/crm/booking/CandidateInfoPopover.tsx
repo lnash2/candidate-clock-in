@@ -13,14 +13,30 @@ interface Candidate {
   email?: string;
   location?: string;
   jobCategories?: string[];
+  available?: boolean;
 }
 
 interface CandidateInfoPopoverProps {
   candidate: Candidate;
   children: React.ReactNode;
+  onOpenRecord?: (candidateId: string) => void;
 }
 
-const CandidateInfoPopover = ({ candidate, children }: CandidateInfoPopoverProps) => {
+const CandidateInfoPopover = ({ candidate, children, onOpenRecord }: CandidateInfoPopoverProps) => {
+  const handleNameClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onOpenRecord) {
+      onOpenRecord(candidate.id);
+    }
+  };
+
+  const handlePhoneClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (candidate.phone) {
+      window.open(`tel:${candidate.phone}`, '_self');
+    }
+  };
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -30,7 +46,12 @@ const CandidateInfoPopover = ({ candidate, children }: CandidateInfoPopoverProps
         <div className="space-y-3">
           <div className="flex items-center space-x-2">
             <User className="w-4 h-4" />
-            <span className="font-semibold">{candidate.name}</span>
+            <button 
+              onClick={handleNameClick}
+              className="font-semibold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
+            >
+              {candidate.name}
+            </button>
           </div>
           
           <div className="space-y-2">
@@ -41,7 +62,12 @@ const CandidateInfoPopover = ({ candidate, children }: CandidateInfoPopoverProps
             {candidate.phone && (
               <div className="flex items-center space-x-2 text-sm">
                 <Phone className="w-3 h-3" />
-                <span>{candidate.phone}</span>
+                <button
+                  onClick={handlePhoneClick}
+                  className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
+                >
+                  {candidate.phone}
+                </button>
               </div>
             )}
             

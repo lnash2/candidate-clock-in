@@ -177,6 +177,12 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
     setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
   };
 
+  const handleOpenCandidateRecord = (candidateId: string) => {
+    console.log('Opening candidate record:', candidateId);
+    // This would typically navigate to the candidate detail page or open a dialog
+    // For now, we'll just log it - in a real implementation, this would integrate with your routing
+  };
+
   const handleAddCandidateNote = (candidate: Candidate) => {
     setSelectedCandidate(candidate);
     setNoteDialogOpen(true);
@@ -306,14 +312,13 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                 ))}
               </div>
 
-              {/* Candidate rows - Compact single-line layout */}
+              {/* Candidate rows */}
               {candidates.map((candidate, index) => (
                 <div key={candidate.id} className={`flex border-b border-gray-200 h-12 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                  {/* Compact candidate details - Single line */}
+                  {/* Candidate details */}
                   <div className="w-[350px] bg-white border-r border-gray-200 sticky left-0 z-10 flex items-center justify-between h-12 px-3">
-                    <CandidateInfoPopover candidate={candidate}>
+                    <CandidateInfoPopover candidate={candidate} onOpenRecord={handleOpenCandidateRecord}>
                       <div className="cursor-pointer hover:bg-gray-50 px-2 py-1 rounded flex-1 min-w-0 transition-colors flex items-center space-x-3">
-                        {/* Name and phone in single line */}
                         <div className="font-medium text-sm text-blue-600 hover:text-blue-800 truncate min-w-0">
                           {candidate.name}
                         </div>
@@ -335,7 +340,7 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                     </Button>
                   </div>
                   
-                  {/* Date columns - Compact height cells */}
+                  {/* Date columns */}
                   {weekDays.map((date) => {
                     const booking = getBookingForCandidateAndDate(candidate.id, date);
                     const isAvailable = getCandidateAvailability(candidate.id, date);
@@ -346,7 +351,6 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                         className="flex-1 bg-white h-12 flex items-center justify-center px-2 border-r border-gray-200 last:border-r-0"
                       >
                         {booking ? (
-                          // Show booking - Compact layout
                           <div
                             className={`px-2 py-1 rounded text-xs w-full h-8 flex items-center justify-between cursor-pointer transition-colors ${getStatusColor(booking.status, booking.bookingType)}`}
                             onClick={() => onBookingClick(booking)}
@@ -369,7 +373,6 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                             </div>
                           </div>
                         ) : (
-                          // Show availability status - Compact
                           <div
                             className={`px-2 py-1 rounded text-xs w-full h-8 flex items-center justify-center cursor-pointer transition-colors ${getAvailabilityColor(isAvailable)}`}
                             onClick={() => handleAvailabilityClick(candidate, date)}
