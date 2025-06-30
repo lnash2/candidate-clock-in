@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import ComprehensiveBookingForm from './ComprehensiveBookingForm';
+import RefactoredBookingForm from './booking/RefactoredBookingForm';
 import BookingStats from './booking/BookingStats';
 import ViewToggle from './booking/ViewToggle';
 import SearchFilters from './booking/SearchFilters';
@@ -12,6 +11,7 @@ import BookingsList from './booking/BookingsList';
 import ScheduleGrid from './booking/ScheduleGrid';
 import OpenBookingsSection from './OpenBookingsSection';
 import { useBookings } from '@/hooks/useBookings';
+import { PageLoading } from '@/components/ui/loading';
 
 const BookingManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -64,6 +64,8 @@ const BookingManagement = () => {
         booking_type: 'assigned',
         status: bookingData.booking_status || 'pending',
         is_night_shift: bookingData.booking_type === 'night_shift',
+        estimated_duration: bookingData.estimated_duration || 0,
+        route_distance: bookingData.route_distance || 0,
         notes: bookingData.notes
       });
       setIsCreateDialogOpen(false);
@@ -103,11 +105,7 @@ const BookingManagement = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-lg">Loading bookings...</div>
-      </div>
-    );
+    return <PageLoading />;
   }
 
   return (
@@ -130,10 +128,10 @@ const BookingManagement = () => {
             </DialogTrigger>
             <DialogContent className="max-w-6xl max-h-[95vh]">
               <DialogHeader>
-                <DialogTitle>Create New Comprehensive Booking</DialogTitle>
+                <DialogTitle>Create New Booking</DialogTitle>
               </DialogHeader>
               <ScrollArea className="max-h-[80vh]">
-                <ComprehensiveBookingForm
+                <RefactoredBookingForm
                   onSubmit={handleCreateBooking}
                   onCancel={() => setIsCreateDialogOpen(false)}
                 />
