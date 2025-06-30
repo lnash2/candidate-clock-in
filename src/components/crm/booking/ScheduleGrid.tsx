@@ -8,6 +8,7 @@ import CandidateInfoPopover from './CandidateInfoPopover';
 import AddNoteDialog from './AddNoteDialog';
 import BookingActionsMenu from './BookingActionsMenu';
 import AvailabilityDialog from './AvailabilityDialog';
+import AvailabilityStatusIndicator from './AvailabilityStatusIndicator';
 
 interface BookingEvent {
   id: number;
@@ -369,11 +370,15 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                   {/* Date columns */}
                   {weekDays.map((date) => {
                     const booking = getBookingForCandidateAndDate(candidate.id, date);
+                    const isAvailable = getCandidateAvailability(candidate.id, date);
+                    const hasAvailabilitySet = candidateAvailability[candidate.id]?.[format(date, 'yyyy-MM-dd')] !== undefined;
                     
                     return (
                       <div
                         key={`${candidate.id}-${date.toISOString()}`}
-                        className="flex-1 bg-white h-10 flex items-center justify-center px-2 border-r border-gray-200 last:border-r-0"
+                        className={`flex-1 bg-white h-10 flex items-center justify-center px-2 border-r border-gray-200 last:border-r-0 relative ${
+                          hasAvailabilitySet && !booking ? (isAvailable ? 'bg-green-50' : 'bg-red-50') : ''
+                        }`}
                       >
                         {booking ? (
                           <div
@@ -398,25 +403,32 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                             </div>
                           </div>
                         ) : (
-                          <div className="flex items-center space-x-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleCreateBookingForCandidate(candidate, date)}
-                              className="h-6 w-6 p-0 hover:bg-blue-50"
-                              title="Create booking"
-                            >
-                              <Plus className="w-3 h-3 text-blue-600" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleSetAvailability(candidate, date)}
-                              className="h-6 w-6 p-0 hover:bg-gray-50"
-                              title="Set availability"
-                            >
-                              <Pencil className="w-3 h-3 text-gray-600" />
-                            </Button>
+                          <div className="flex flex-col items-center justify-center h-full w-full">
+                            {hasAvailabilitySet && (
+                              <div className="absolute top-0 left-0 right-0">
+                                <AvailabilityStatusIndicator isAvailable={isAvailable} />
+                              </div>
+                            )}
+                            <div className="flex items-center space-x-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleCreateBookingForCandidate(candidate, date)}
+                                className="h-6 w-6 p-0 hover:bg-blue-50"
+                                title="Create booking"
+                              >
+                                <Plus className="w-3 h-3 text-blue-600" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleSetAvailability(candidate, date)}
+                                className="h-6 w-6 p-0 hover:bg-gray-50"
+                                title="Set availability"
+                              >
+                                <Pencil className="w-3 h-3 text-gray-600" />
+                              </Button>
+                            </div>
                           </div>
                         )}
                       </div>
