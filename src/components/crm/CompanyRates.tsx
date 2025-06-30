@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Edit, Trash2, DollarSign, Clock, Calendar } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface CompanyRatesProps {
   companyId: number;
@@ -178,11 +178,7 @@ const CompanyRates = ({ companyId }: CompanyRatesProps) => {
     }
   };
 
-  const getCategoryIcon = (category: string) => {
-    const categoryConfig = rateCategories.find(c => c.value === category);
-    return categoryConfig?.icon || Calendar;
-  };
-
+  // Group rates by driver class
   const groupedRates = rates.reduce((acc, rate) => {
     if (!acc[rate.driver_class]) {
       acc[rate.driver_class] = {};
@@ -303,30 +299,100 @@ const CompanyRates = ({ companyId }: CompanyRatesProps) => {
         {Object.entries(groupedRates).map(([driverClass, categoryRates]) => (
           <Card key={driverClass}>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Badge variant="outline">{driverClass}</Badge>
-                <span className="text-sm text-muted-foreground">
-                  {Object.keys(categoryRates).length} rate{Object.keys(categoryRates).length !== 1 ? 's' : ''} configured
-                </span>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Badge variant="outline">{driverClass}</Badge>
+                  <span className="text-sm text-muted-foreground">
+                    {Object.keys(categoryRates).length} rate{Object.keys(categoryRates).length !== 1 ? 's' : ''} configured
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setFormData({
+                      driver_class: driverClass,
+                      rate_category: 'days',
+                      charge_rate: '',
+                      pay_rate: '',
+                      description: '',
+                      valid_from: new Date().toISOString().split('T')[0],
+                      valid_to: ''
+                    });
+                    setIsAddDialogOpen(true);
+                  }}
+                >
+                  <Plus className="w-3 h-3 mr-1" />
+                  Add Rate
+                </Button>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {rateCategories.map(category => {
-                  const rate = categoryRates[category.value];
-                  const IconComponent = category.icon;
-                  
-                  return (
-                    <Card key={category.value} className={`border-2 ${rate ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-start mb-3">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Charge Rate</TableHead>
+                    <TableHead>Pay Rate</TableHead>
+                    <TableHead>Margin</TableHead>
+                    <TableHead>Valid Period</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rateCategories.map(category => {
+                    const rate = categoryRates[category.value];
+                    const IconComponent = category.icon;
+                    
+                    return (
+                      <TableRow key={category.value}>
+                        <TableCell>
                           <div className="flex items-center space-x-2">
                             <IconComponent className="w-4 h-4" />
                             <Badge className={getCategoryColor(category.value)}>
                               {category.label}
                             </Badge>
                           </div>
-                          {rate && (
+                        </TableCell>
+                        <TableCell>
+                          {rate ? (
+                            <span className="text-lg font-bold text-green-600">
+                              £{rate.charge_rate.toFixed(2)}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">Not set</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {rate ? (
+                            <span className="text-lg font-bold text-blue-600">
+                              £{rate.pay_rate.toFixed(2)}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">Not set</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {rate ? (
+                            <span className="font-bold text-purple-600">
+                              £{(rate.charge_rate - rate.pay_rate).toFixed(2)} ({(((rate.charge_rate - rate.pay_rate) / rate.charge_rate) * 100).toFixed(1)}%)
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {rate ? (
+                            <div className="text-xs">
+                              <div>{rate.valid_from}</div>
+                              {rate.valid_to && <div>to {rate.valid_to}</div>}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {rate ? (
                             <div className="flex items-center space-x-2">
                               <Dialog>
                                 <DialogTrigger asChild>
@@ -430,41 +496,7 @@ const CompanyRates = ({ companyId }: CompanyRatesProps) => {
                                 <Trash2 className="w-3 h-3" />
                               </Button>
                             </div>
-                          )}
-                        </div>
-                        
-                        {rate ? (
-                          <>
-                            {rate.description && (
-                              <p className="text-sm text-muted-foreground mb-3">{rate.description}</p>
-                            )}
-                            
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                              <div>
-                                <span className="font-medium text-muted-foreground">Charge Rate:</span>
-                                <div className="text-lg font-bold text-green-600">£{rate.charge_rate.toFixed(2)}</div>
-                              </div>
-                              <div>
-                                <span className="font-medium text-muted-foreground">Pay Rate:</span>
-                                <div className="text-lg font-bold text-blue-600">£{rate.pay_rate.toFixed(2)}</div>
-                              </div>
-                            </div>
-                            
-                            <div className="mt-3 pt-3 border-t">
-                              <div className="flex justify-between text-sm">
-                                <span className="font-medium">Margin:</span>
-                                <span className="font-bold text-purple-600">
-                                  £{getMargin(rate.charge_rate, rate.pay_rate).toFixed(2)} ({getMarginPercent(rate.charge_rate, rate.pay_rate).toFixed(1)}%)
-                                </span>
-                              </div>
-                              <div className="text-xs text-muted-foreground mt-1">
-                                Valid: {rate.valid_from} {rate.valid_to && `to ${rate.valid_to}`}
-                              </div>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="text-center py-4">
-                            <p className="text-sm text-muted-foreground mb-2">No {category.label.toLowerCase()} rate set</p>
+                          ) : (
                             <Button
                               variant="outline"
                               size="sm"
@@ -482,15 +514,15 @@ const CompanyRates = ({ companyId }: CompanyRatesProps) => {
                               }}
                             >
                               <Plus className="w-3 h-3 mr-1" />
-                              Add Rate
+                              Set Rate
                             </Button>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         ))}
