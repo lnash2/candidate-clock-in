@@ -283,11 +283,11 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <div className="min-w-[1800px]">
+            <div className="min-w-[1400px]">
               {/* Header row with dates */}
               <div className="flex bg-gray-50 border-b border-gray-200">
-                <div className="w-[400px] p-4 font-semibold text-sm bg-gray-100 border-r border-gray-200 sticky left-0 z-10">
-                  <div className="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors" onClick={handleSort}>
+                <div className="w-[350px] p-3 font-semibold text-sm bg-gray-100 border-r border-gray-200 sticky left-0 z-10">
+                  <div className="flex items-center cursor-pointer hover:bg-gray-50 px-2 py-1 rounded transition-colors" onClick={handleSort}>
                     <User className="w-4 h-4 mr-2 text-gray-600" />
                     <span>Candidate Details</span>
                     {getSortIcon()}
@@ -296,7 +296,7 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                 {weekDays.map((date) => (
                   <div
                     key={date.toISOString()}
-                    className={`flex-1 p-3 text-center text-sm font-medium min-w-[140px] border-r border-gray-200 last:border-r-0 ${
+                    className={`flex-1 p-3 text-center text-sm font-medium min-w-[120px] border-r border-gray-200 last:border-r-0 ${
                       isSameDay(date, new Date()) ? 'bg-blue-50 text-blue-700' : 'bg-gray-50'
                     }`}
                   >
@@ -306,55 +306,36 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                 ))}
               </div>
 
-              {/* Candidate rows - Improved vertical layout */}
+              {/* Candidate rows - Compact single-line layout */}
               {candidates.map((candidate, index) => (
-                <div key={candidate.id} className={`flex border-b border-gray-200 min-h-[80px] ${index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}`}>
-                  {/* Enhanced candidate details - Clean vertical layout */}
-                  <div className="w-[400px] p-4 bg-white border-r border-gray-200 sticky left-0 z-10 flex items-center justify-between min-h-[80px]">
+                <div key={candidate.id} className={`flex border-b border-gray-200 h-12 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                  {/* Compact candidate details - Single line */}
+                  <div className="w-[350px] bg-white border-r border-gray-200 sticky left-0 z-10 flex items-center justify-between h-12 px-3">
                     <CandidateInfoPopover candidate={candidate}>
-                      <div className="cursor-pointer hover:bg-gray-50 p-2 rounded-lg flex-1 min-w-0 transition-colors">
-                        {/* Primary info - Name and Driver Class */}
-                        <div className="flex items-center space-x-3 mb-2">
-                          <div className="font-semibold text-base text-blue-600 hover:text-blue-800 truncate">
-                            {candidate.name}
-                          </div>
-                          <Badge variant="outline" className="text-xs px-2 py-1 bg-blue-50 text-blue-700 border-blue-200">
-                            {candidate.driverClass}
-                          </Badge>
+                      <div className="cursor-pointer hover:bg-gray-50 px-2 py-1 rounded flex-1 min-w-0 transition-colors flex items-center space-x-3">
+                        {/* Name and phone in single line */}
+                        <div className="font-medium text-sm text-blue-600 hover:text-blue-800 truncate min-w-0">
+                          {candidate.name}
                         </div>
-                        
-                        {/* Secondary info - Contact details */}
-                        <div className="space-y-1">
-                          <div className="text-sm text-gray-600 truncate">
-                            📞 {candidate.phone}
-                          </div>
-                          <div className="text-sm text-gray-500 truncate">
-                            📍 {candidate.location}
-                          </div>
+                        <div className="text-xs text-gray-500 truncate">
+                          {candidate.phone}
                         </div>
-                        
-                        {/* Job Categories - Show only first category */}
-                        {candidate.jobCategories && candidate.jobCategories.length > 0 && (
-                          <div className="mt-2">
-                            <Badge variant="secondary" className="text-xs px-2 py-1 bg-gray-100 text-gray-700">
-                              {candidate.jobCategories[0]}
-                              {candidate.jobCategories.length > 1 && ` +${candidate.jobCategories.length - 1}`}
-                            </Badge>
-                          </div>
-                        )}
+                        <Badge variant="outline" className="text-xs px-1.5 py-0.5 bg-blue-50 text-blue-700 border-blue-200 flex-shrink-0">
+                          {candidate.driverClass}
+                        </Badge>
                       </div>
                     </CandidateInfoPopover>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => handleAddCandidateNote(candidate)}
-                      className="h-8 w-8 p-0 ml-3 flex-shrink-0 hover:bg-gray-100"
+                      className="h-6 w-6 p-0 ml-2 flex-shrink-0 hover:bg-gray-100"
                     >
-                      <StickyNote className="w-4 h-4 text-gray-500" />
+                      <StickyNote className="w-3 h-3 text-gray-500" />
                     </Button>
                   </div>
                   
-                  {/* Date columns - Consistent height cells */}
+                  {/* Date columns - Compact height cells */}
                   {weekDays.map((date) => {
                     const booking = getBookingForCandidateAndDate(candidate.id, date);
                     const isAvailable = getCandidateAvailability(candidate.id, date);
@@ -362,25 +343,21 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                     return (
                       <div
                         key={`${candidate.id}-${date.toISOString()}`}
-                        className="flex-1 bg-white min-h-[80px] flex items-center justify-center p-2 border-r border-gray-200 last:border-r-0"
+                        className="flex-1 bg-white h-12 flex items-center justify-center px-2 border-r border-gray-200 last:border-r-0"
                       >
                         {booking ? (
-                          // Show booking with improved layout
+                          // Show booking - Compact layout
                           <div
-                            className={`p-3 rounded-lg cursor-pointer text-sm w-full h-full flex flex-col justify-between transition-colors ${getStatusColor(booking.status, booking.bookingType)}`}
+                            className={`px-2 py-1 rounded text-xs w-full h-8 flex items-center justify-between cursor-pointer transition-colors ${getStatusColor(booking.status, booking.bookingType)}`}
                             onClick={() => onBookingClick(booking)}
                           >
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="font-medium truncate flex-1 text-sm">{booking.customer}</span>
-                              <div className="flex items-center space-x-1 flex-shrink-0 ml-2">
-                                {booking.isNightShift ? (
-                                  <Moon className="w-3 h-3" />
-                                ) : (
-                                  <Sun className="w-3 h-3" />
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex justify-end">
+                            <span className="font-medium truncate flex-1 text-xs">{booking.customer}</span>
+                            <div className="flex items-center space-x-1 flex-shrink-0 ml-1">
+                              {booking.isNightShift ? (
+                                <Moon className="w-3 h-3" />
+                              ) : (
+                                <Sun className="w-3 h-3" />
+                              )}
                               <BookingActionsMenu
                                 bookingId={booking.id}
                                 isOpen={booking.bookingType === 'open'}
@@ -392,12 +369,12 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                             </div>
                           </div>
                         ) : (
-                          // Show availability status with improved styling
+                          // Show availability status - Compact
                           <div
-                            className={`p-3 rounded-lg cursor-pointer text-sm w-full h-full flex items-center justify-center transition-colors ${getAvailabilityColor(isAvailable)}`}
+                            className={`px-2 py-1 rounded text-xs w-full h-8 flex items-center justify-center cursor-pointer transition-colors ${getAvailabilityColor(isAvailable)}`}
                             onClick={() => handleAvailabilityClick(candidate, date)}
                           >
-                            <span className="font-medium text-sm">
+                            <span className="font-medium text-xs">
                               {isAvailable ? 'Available' : 'Unavailable'}
                             </span>
                           </div>
