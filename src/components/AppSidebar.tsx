@@ -1,6 +1,7 @@
 
 import React from 'react';
-import { Building2, Users, MessageSquare, DollarSign, Calendar, BarChart3, UserCheck } from 'lucide-react';
+import { Building2, Users, MessageSquare, DollarSign, Calendar, BarChart3, UserCheck, Menu } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   Sidebar,
   SidebarContent,
@@ -20,7 +21,7 @@ interface AppSidebarProps {
 }
 
 const AppSidebar = ({ activeSection, onSectionChange }: AppSidebarProps) => {
-  const { state } = useSidebar();
+  const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === 'collapsed';
 
   const menuItems = [
@@ -44,7 +45,18 @@ const AppSidebar = ({ activeSection, onSectionChange }: AppSidebarProps) => {
       
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <div className="flex items-center justify-between px-2">
+            <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleSidebar}
+              className="h-6 w-6 p-0 hover:bg-gray-100 transition-colors"
+              title={isCollapsed ? "Expand navigation" : "Collapse navigation"}
+            >
+              <Menu className="h-3 w-3" />
+            </Button>
+          </div>
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => (
