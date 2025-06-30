@@ -1,11 +1,11 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Phone, Mail, Building2, Calendar, FileText, Users, DollarSign } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, Building2, Calendar, FileText, Users, DollarSign, MapPin } from 'lucide-react';
 import CompanyRates from './CompanyRates';
+import WorkLocationsList from './locations/WorkLocationsList';
 
 interface CompanyDetailProps {
   companyId: number;
@@ -172,7 +172,7 @@ const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
 
       {/* Detailed Tabs */}
       <Tabs defaultValue="history" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="history" className="flex items-center space-x-2">
             <Calendar className="w-4 h-4" />
             <span>History</span>
@@ -184,6 +184,10 @@ const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
           <TabsTrigger value="contacts" className="flex items-center space-x-2">
             <Users className="w-4 h-4" />
             <span>Contacts</span>
+          </TabsTrigger>
+          <TabsTrigger value="locations" className="flex items-center space-x-2">
+            <MapPin className="w-4 h-4" />
+            <span>Locations</span>
           </TabsTrigger>
           <TabsTrigger value="rates" className="flex items-center space-x-2">
             <DollarSign className="w-4 h-4" />
@@ -284,6 +288,10 @@ const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="locations" className="mt-4">
+          <WorkLocationsList companyId={companyId} />
         </TabsContent>
 
         <TabsContent value="rates" className="mt-4">

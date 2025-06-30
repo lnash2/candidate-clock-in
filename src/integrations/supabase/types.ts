@@ -880,6 +880,80 @@ export type Database = {
         }
         Relationships: []
       }
+      work_locations: {
+        Row: {
+          address_line_1: string | null
+          address_line_2: string | null
+          city: string | null
+          contact_email: string | null
+          contact_mobile: string | null
+          contact_name: string
+          contact_phone: string | null
+          contact_position: string | null
+          country: string | null
+          county: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          is_active: boolean | null
+          is_primary: boolean | null
+          location_name: string
+          notes: string | null
+          post_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          address_line_1?: string | null
+          address_line_2?: string | null
+          city?: string | null
+          contact_email?: string | null
+          contact_mobile?: string | null
+          contact_name: string
+          contact_phone?: string | null
+          contact_position?: string | null
+          country?: string | null
+          county?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          is_active?: boolean | null
+          is_primary?: boolean | null
+          location_name: string
+          notes?: string | null
+          post_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address_line_1?: string | null
+          address_line_2?: string | null
+          city?: string | null
+          contact_email?: string | null
+          contact_mobile?: string | null
+          contact_name?: string
+          contact_phone?: string | null
+          contact_position?: string | null
+          country?: string | null
+          county?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          is_active?: boolean | null
+          is_primary?: boolean | null
+          location_name?: string
+          notes?: string | null
+          post_code?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_locations_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
