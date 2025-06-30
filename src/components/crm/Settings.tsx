@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2, Edit3 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import NoteTypeFormDialog from './settings/NoteTypeFormDialog';
+import NoteTypeFormDialog from '../settings/NoteTypeFormDialog';
 
 interface NoteType {
   id: string;
