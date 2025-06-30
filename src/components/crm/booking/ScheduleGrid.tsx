@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { ChevronLeft, ChevronRight, Moon, Sun, Plus, StickyNote, User, Pencil, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Moon, Sun, Plus, StickyNote, User, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { format, addDays, startOfWeek, isSameDay, parseISO } from 'date-fns';
 import CandidateInfoPopover from './CandidateInfoPopover';
 import AddNoteDialog from './AddNoteDialog';
 import BookingActionsMenu from './BookingActionsMenu';
 import AvailabilityDialog from './AvailabilityDialog';
-import AvailabilityStatusIndicator from './AvailabilityStatusIndicator';
 
 interface BookingEvent {
   id: number;
@@ -52,7 +50,6 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [sortOrder, setSortOrder] = useState<SortOrder>(null);
-  // Track availability per candidate per day: candidateId -> dateString -> boolean
   const [candidateAvailability, setCandidateAvailability] = useState<{[key: string]: {[key: string]: boolean}}>({});
 
   // Enhanced mock candidates data with contact information
@@ -162,6 +159,12 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
     }
   };
 
+  const getAvailabilityColor = (isAvailable: boolean) => {
+    return isAvailable 
+      ? 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100' 
+      : 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100';
+  };
+
   const goToPreviousWeek = () => {
     setCurrentWeekStart(addDays(currentWeekStart, -7));
   };
@@ -181,7 +184,6 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
 
   const handleAddNote = (candidateId: string, note: string) => {
     console.log('Adding note for candidate:', candidateId, note);
-    // This would typically call an API to save the note
   };
 
   const handleEditBooking = (bookingId: number) => {
@@ -219,7 +221,6 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
   };
 
   const handleSaveAvailability = (candidateId: string, startDate: Date, endDate: Date, available: boolean) => {
-    // Set availability for the date range
     const currentDate = new Date(startDate);
     const updates = { ...candidateAvailability };
     
@@ -239,7 +240,17 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
 
   const getCandidateAvailability = (candidateId: string, date: Date) => {
     const dateString = format(date, 'yyyy-MM-dd');
-    return candidateAvailability[candidateId]?.[dateString] ?? true; // Default to available
+    return candidateAvailability[candidateId]?.[dateString] ?? true;
+  };
+
+  const handleAvailabilityClick = (candidate: Candidate, date: Date) => {
+    // Check if there's already a booking
+    const booking = getBookingForCandidateAndDate(candidate.id, date);
+    if (booking) {
+      onBookingClick(booking);
+    } else {
+      handleOpenAvailabilityDialog(candidate, date);
+    }
   };
 
   return (
@@ -249,13 +260,13 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
         <div className="flex items-center space-x-4">
           <h2 className="text-xl font-semibold">Schedule Grid</h2>
           <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm" onClick={goToPreviousWeek}>
+            <Button variant="outline" size="sm" onClick={() => setCurrentWeekStart(addDays(currentWeekStart, -7))}>
               <ChevronLeft className="w-4 h-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={goToToday}>
+            <Button variant="outline" size="sm" onClick={() => setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}>
               Today
             </Button>
-            <Button variant="outline" size="sm" onClick={goToNextWeek}>
+            <Button variant="outline" size="sm" onClick={() => setCurrentWeekStart(addDays(currentWeekStart, 7))}>
               <ChevronRight className="w-4 h-4" />
             </Button>
             <span className="text-sm font-medium min-w-[200px] text-center">
@@ -275,7 +286,7 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
             <div className="min-w-[1400px]">
               {/* Header row with dates */}
               <div className="grid grid-cols-8 gap-px bg-gray-200">
-                <div className="p-3 font-semibold text-sm bg-gray-50 border-r min-w-[600px]">
+                <div className="p-3 font-semibold text-sm bg-gray-50 border-r">
                   <div className="flex items-center cursor-pointer hover:bg-gray-100 p-1 rounded" onClick={handleSort}>
                     <User className="w-4 h-4 mr-2" />
                     <span>Candidate Details</span>
@@ -295,47 +306,39 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                 ))}
               </div>
 
-              {/* Candidate rows */}
+              {/* Candidate rows - HORIZONTAL single line layout */}
               {candidates.map((candidate) => (
                 <div key={candidate.id} className="grid grid-cols-8 gap-px bg-gray-200 border-b">
-                  {/* Expanded candidate details with full information */}
-                  <div className="p-4 bg-white border-r flex items-center justify-between min-h-[80px]">
+                  {/* Single line candidate details - HORIZONTAL layout */}
+                  <div className="p-2 bg-white border-r flex items-center justify-between h-12">
                     <CandidateInfoPopover candidate={candidate}>
-                      <div className="cursor-pointer hover:bg-gray-50 p-3 rounded flex-1 min-w-0 grid grid-cols-4 gap-4 items-center">
-                        {/* Name and Driver Class */}
-                        <div className="space-y-1">
-                          <div className="font-semibold text-sm text-blue-600 hover:text-blue-800">
+                      <div className="cursor-pointer hover:bg-gray-50 p-1 rounded flex-1 min-w-0 flex items-center space-x-4">
+                        {/* Name and Driver Class - side by side */}
+                        <div className="flex items-center space-x-2 min-w-0">
+                          <div className="font-semibold text-sm text-blue-600 hover:text-blue-800 truncate">
                             {candidate.name}
                           </div>
-                          <Badge variant="outline" className="text-xs px-2 py-1 h-6">
+                          <Badge variant="outline" className="text-xs px-1 py-0 h-4 flex-shrink-0">
                             {candidate.driverClass}
                           </Badge>
                         </div>
                         
-                        {/* Contact Information */}
-                        <div className="space-y-1 text-xs text-gray-600">
-                          <div className="truncate">{candidate.phone}</div>
-                          <div className="truncate">{candidate.email}</div>
+                        {/* Contact Information - horizontal */}
+                        <div className="text-xs text-gray-600 truncate min-w-0">
+                          {candidate.phone}
                         </div>
                         
-                        {/* Location */}
-                        <div className="text-xs text-gray-500">
-                          <div className="truncate">{candidate.location}</div>
+                        {/* Location - horizontal */}
+                        <div className="text-xs text-gray-500 truncate min-w-0">
+                          {candidate.location}
                         </div>
                         
-                        {/* Job Categories */}
-                        <div className="text-xs">
+                        {/* Primary Job Category - horizontal */}
+                        <div className="text-xs flex-shrink-0">
                           {candidate.jobCategories && candidate.jobCategories.length > 0 && (
-                            <div className="space-y-1">
-                              {candidate.jobCategories.slice(0, 2).map((category, index) => (
-                                <Badge key={index} variant="secondary" className="text-xs mr-1 mb-1">
-                                  {category}
-                                </Badge>
-                              ))}
-                              {candidate.jobCategories.length > 2 && (
-                                <span className="text-gray-400">+{candidate.jobCategories.length - 2} more</span>
-                              )}
-                            </div>
+                            <Badge variant="secondary" className="text-xs px-1 py-0 h-4">
+                              {candidate.jobCategories[0]}
+                            </Badge>
                           )}
                         </div>
                       </div>
@@ -344,13 +347,13 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                       variant="ghost"
                       size="sm"
                       onClick={() => handleAddCandidateNote(candidate)}
-                      className="h-8 w-8 p-0 ml-3 flex-shrink-0"
+                      className="h-6 w-6 p-0 ml-2 flex-shrink-0"
                     >
-                      <StickyNote className="w-4 h-4" />
+                      <StickyNote className="w-3 h-3" />
                     </Button>
                   </div>
                   
-                  {/* Date columns with availability indicator and booking area */}
+                  {/* Date columns - single height cells */}
                   {weekDays.map((date) => {
                     const booking = getBookingForCandidateAndDate(candidate.id, date);
                     const isAvailable = getCandidateAvailability(candidate.id, date);
@@ -358,60 +361,42 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                     return (
                       <div
                         key={`${candidate.id}-${date.toISOString()}`}
-                        className="bg-white min-h-[80px] flex flex-col"
+                        className="bg-white h-12 flex items-center justify-center"
                       >
-                        {/* Top section: Availability indicator and pencil */}
-                        <div className="p-1 border-b border-gray-100 flex items-center justify-between h-8 bg-gray-25">
-                          <AvailabilityStatusIndicator isAvailable={isAvailable} />
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleOpenAvailabilityDialog(candidate, date)}
-                            className="h-5 w-5 p-0 ml-1 flex-shrink-0 hover:bg-gray-200"
+                        {booking ? (
+                          // Show booking in full cell
+                          <div
+                            className={`p-1 rounded cursor-pointer text-xs w-full h-full flex items-center justify-between ${getStatusColor(booking.status, booking.bookingType)}`}
+                            onClick={() => onBookingClick(booking)}
                           >
-                            <Pencil className="w-3 h-3 text-gray-500" />
-                          </Button>
-                        </div>
-                        
-                        {/* Bottom section: Booking area */}
-                        <div className="p-1 flex-1 hover:bg-gray-50 relative">
-                          {booking ? (
-                            <div
-                              className={`p-2 rounded cursor-pointer text-xs h-full ${getStatusColor(booking.status, booking.bookingType)} relative`}
-                              onClick={() => onBookingClick(booking)}
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className="font-medium truncate text-xs flex-1">{booking.customer}</span>
-                                <div className="flex items-center space-x-0.5 flex-shrink-0">
-                                  {booking.isNightShift ? (
-                                    <Moon className="w-3 h-3" />
-                                  ) : (
-                                    <Sun className="w-3 h-3" />
-                                  )}
-                                  <BookingActionsMenu
-                                    bookingId={booking.id}
-                                    isOpen={booking.bookingType === 'open'}
-                                    onEdit={handleEditBooking}
-                                    onDelete={handleDeleteBooking}
-                                    onAssignCandidate={handleAssignCandidate}
-                                    onAddNote={handleAddBookingNote}
-                                  />
-                                </div>
-                              </div>
+                            <span className="font-medium truncate text-xs flex-1">{booking.customer}</span>
+                            <div className="flex items-center space-x-0.5 flex-shrink-0">
+                              {booking.isNightShift ? (
+                                <Moon className="w-3 h-3" />
+                              ) : (
+                                <Sun className="w-3 h-3" />
+                              )}
+                              <BookingActionsMenu
+                                bookingId={booking.id}
+                                isOpen={booking.bookingType === 'open'}
+                                onEdit={handleEditBooking}
+                                onDelete={handleDeleteBooking}
+                                onAssignCandidate={handleAssignCandidate}
+                                onAddNote={handleAddBookingNote}
+                              />
                             </div>
-                          ) : (
-                            <div className="h-full flex items-center justify-center">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={onCreateBooking}
-                                className="text-xs text-gray-400 hover:text-gray-600 h-auto p-1"
-                              >
-                                <Plus className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          )}
-                        </div>
+                          </div>
+                        ) : (
+                          // Show availability status in full cell
+                          <div
+                            className={`p-1 rounded cursor-pointer text-xs w-full h-full flex items-center justify-center ${getAvailabilityColor(isAvailable)}`}
+                            onClick={() => handleAvailabilityClick(candidate, date)}
+                          >
+                            <span className="font-medium text-xs">
+                              {isAvailable ? 'Available' : 'Unavailable'}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
