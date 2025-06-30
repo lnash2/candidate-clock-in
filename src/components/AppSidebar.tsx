@@ -1,75 +1,120 @@
 
-import React from 'react';
-import { 
-  Sidebar, 
-  SidebarContent, 
-  SidebarGroup, 
-  SidebarGroupContent, 
-  SidebarGroupLabel, 
-  SidebarMenu, 
-  SidebarMenuButton, 
+import { Home, Building2, Users, UserCheck, Calendar, MessageSquare, Calculator, Settings, Database } from "lucide-react"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar
-} from '@/components/ui/sidebar';
-import { 
-  BarChart3, 
-  Building2, 
-  Users, 
-  UserCheck, 
-  MessageCircle, 
-  PoundSterling, 
-  Calendar, 
-  Settings
-} from 'lucide-react';
+} from "@/components/ui/sidebar"
+
+const menuItems = [
+  {
+    title: "Overview",
+    icon: Home,
+    id: "overview",
+  },
+  {
+    title: "Companies",
+    icon: Building2,
+    id: "companies",
+  },
+  {
+    title: "Contacts",
+    icon: Users,
+    id: "contacts",
+  },
+  {
+    title: "Candidates", 
+    icon: UserCheck,
+    id: "candidates",
+  },
+  {
+    title: "Bookings",
+    icon: Calendar,
+    id: "bookings",
+  },
+  {
+    title: "Communications",
+    icon: MessageSquare,
+    id: "communications",
+  },
+  {
+    title: "Rate Management",
+    icon: Calculator,
+    id: "rates",
+  },
+]
+
+const systemItems = [
+  {
+    title: "Database Setup",
+    icon: Database,
+    id: "setup",
+  },
+  {
+    title: "Settings",
+    icon: Settings,
+    id: "settings",
+  },
+]
 
 interface AppSidebarProps {
-  activeSection: string;
-  onSectionChange: (section: string) => void;
+  activeView: string;
+  onViewChange: (view: string) => void;
 }
 
-const AppSidebar = ({ activeSection, onSectionChange }: AppSidebarProps) => {
-  const { state } = useSidebar();
-  const isCollapsed = state === 'collapsed';
-
-  const menuItems = [
-    { id: 'overview', label: 'Overview', icon: BarChart3 },
-    { id: 'companies', label: 'Companies', icon: Building2 },
-    { id: 'contacts', label: 'Contacts', icon: Users },
-    { id: 'candidates', label: 'Candidates', icon: UserCheck },
-    { id: 'communications', label: 'Communications', icon: MessageCircle },
-    { id: 'rates', label: 'Rates', icon: PoundSterling },
-    { id: 'bookings', label: 'Bookings', icon: Calendar },
-    { id: 'settings', label: 'Settings', icon: Settings },
-  ];
-
+export function AppSidebar({ activeView, onViewChange }: AppSidebarProps) {
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar>
       <SidebarContent>
         <SidebarGroup>
-          {!isCollapsed && <SidebarGroupLabel>CRM Dashboard</SidebarGroupLabel>}
+          <SidebarGroupLabel>Recruitment CRM</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <SidebarMenuItem key={item.id}>
-                    <SidebarMenuButton 
-                      onClick={() => onSectionChange(item.id)}
-                      isActive={activeSection === item.id}
-                      tooltip={isCollapsed ? item.label : undefined}
-                    >
-                      <Icon className="w-4 h-4" />
-                      {!isCollapsed && <span>{item.label}</span>}
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+              {menuItems.map((item) => (
+                <SidebarMenuItem key={item.id}>
+                  <SidebarMenuButton 
+                    asChild
+                    isActive={activeView === item.id}
+                    onClick={() => onViewChange(item.id)}
+                  >
+                    <button className="w-full">
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </button>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        
+        <SidebarGroup>
+          <SidebarGroupLabel>System</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {systemItems.map((item) => (
+                <SidebarMenuItem key={item.id}>
+                  <SidebarMenuButton 
+                    asChild
+                    isActive={activeView === item.id}
+                    onClick={() => onViewChange(item.id)}
+                  >
+                    <button className="w-full">
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </button>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
     </Sidebar>
-  );
-};
-
-export default AppSidebar;
+  )
+}

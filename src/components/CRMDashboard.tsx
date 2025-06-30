@@ -1,89 +1,60 @@
 
 import React, { useState } from 'react';
-import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
-import { Menu } from 'lucide-react';
-import AppSidebar from './AppSidebar';
-import CompanyManagement from './crm/CompanyManagement';
-import ContactManagement from './crm/ContactManagement';
-import CandidateManagement from './crm/CandidateManagement';
-import CommunicationTracking from './crm/CommunicationTracking';
-import RateManagement from './crm/RateManagement';
-import BookingManagement from './crm/BookingManagement';
-import CRMOverview from './crm/CRMOverview';
-import CompanyDetail from './crm/CompanyDetail';
-import Settings from './crm/Settings';
+import { AppSidebar } from '@/components/AppSidebar';
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import CRMOverview from '@/components/crm/CRMOverview';
+import CompanyManagement from '@/components/crm/CompanyManagement';
+import ContactManagement from '@/components/crm/ContactManagement';
+import CandidateManagement from '@/components/crm/CandidateManagement';
+import BookingManagement from '@/components/crm/BookingManagement';
+import CommunicationTracking from '@/components/crm/CommunicationTracking';
+import RateManagement from '@/components/crm/RateManagement';
+import Settings from '@/components/crm/Settings';
+import DatabaseSetup from '@/components/setup/DatabaseSetup';
 
 const CRMDashboard = () => {
-  const [activeSection, setActiveSection] = useState('overview');
-  const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null);
+  const [activeView, setActiveView] = useState('overview');
 
-  const handleCompanySelect = (companyId: number) => {
-    setSelectedCompanyId(companyId);
-  };
-
-  const handleBackToCompanies = () => {
-    setSelectedCompanyId(null);
-    setActiveSection('companies');
-  };
-
-  const renderContent = () => {
-    // If a company is selected, show company detail view
-    if (selectedCompanyId !== null) {
-      return (
-        <CompanyDetail
-          companyId={selectedCompanyId}
-          onBack={handleBackToCompanies}
-        />
-      );
-    }
-
-    // Otherwise show the main section content
-    switch (activeSection) {
+  const renderActiveView = () => {
+    switch (activeView) {
       case 'overview':
         return <CRMOverview />;
       case 'companies':
-        return <CompanyManagement onCompanySelect={handleCompanySelect} />;
+        return <CompanyManagement />;
       case 'contacts':
         return <ContactManagement />;
       case 'candidates':
         return <CandidateManagement />;
+      case 'bookings':
+        return <BookingManagement />;
       case 'communications':
         return <CommunicationTracking />;
       case 'rates':
         return <RateManagement />;
-      case 'bookings':
-        return <BookingManagement />;
       case 'settings':
         return <Settings />;
+      case 'setup':
+        return (
+          <div className="flex items-center justify-center min-h-screen p-8">
+            <DatabaseSetup />
+          </div>
+        );
       default:
         return <CRMOverview />;
     }
   };
 
-  const getSectionTitle = () => {
-    if (selectedCompanyId !== null) return 'Company Details';
-    return activeSection.charAt(0).toUpperCase() + activeSection.slice(1);
-  };
-
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-white">
-        <AppSidebar
-          activeSection={activeSection}
-          onSectionChange={setActiveSection}
+      <div className="flex h-screen w-full">
+        <AppSidebar 
+          activeView={activeView} 
+          onViewChange={setActiveView}
         />
-        <SidebarInset className="flex-1 flex flex-col bg-white">
-          <header className="flex h-12 shrink-0 items-center border-b bg-white px-4">
-            <SidebarTrigger className="mr-4 hover:bg-gray-100 p-2 rounded-md transition-colors">
-              <Menu className="h-4 w-4" />
-            </SidebarTrigger>
-            <h1 className="text-lg font-semibold">
-              {getSectionTitle()}
-            </h1>
-          </header>
-          <div className="flex-1 overflow-hidden bg-white">
-            {renderContent()}
-          </div>
+        <SidebarInset className="flex-1">
+          <main className="h-full overflow-auto">
+            {renderActiveView()}
+          </main>
         </SidebarInset>
       </div>
     </SidebarProvider>
