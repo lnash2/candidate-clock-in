@@ -46,7 +46,8 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
   const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
-  const [candidateAvailability, setCandidateAvailability] = useState<{[key: string]: boolean}>({});
+  // Track availability per candidate per day: candidateId -> dateString -> boolean
+  const [candidateAvailability, setCandidateAvailability] = useState<{[key: string]: {[key: string]: boolean}}>({});
 
   // Enhanced mock candidates data with contact information
   const candidates: Candidate[] = [
@@ -167,16 +168,21 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
     console.log('Add note to booking:', bookingId);
   };
 
-  const handleAvailabilityChange = (candidateId: string, available: boolean) => {
+  const handleAvailabilityChange = (candidateId: string, date: Date, available: boolean) => {
+    const dateString = format(date, 'yyyy-MM-dd');
     setCandidateAvailability(prev => ({
       ...prev,
-      [candidateId]: available
+      [candidateId]: {
+        ...prev[candidateId],
+        [dateString]: available
+      }
     }));
-    console.log('Candidate availability changed:', candidateId, available);
+    console.log('Candidate availability changed:', candidateId, dateString, available);
   };
 
-  const getCandidateAvailability = (candidateId: string, defaultAvailable: boolean = true) => {
-    return candidateAvailability[candidateId] !== undefined ? candidateAvailability[candidateId] : defaultAvailable;
+  const getCandidateAvailability = (candidateId: string, date: Date) => {
+    const dateString = format(date, 'yyyy-MM-dd');
+    return candidateAvailability[candidateId]?.[dateString] ?? true; // Default to available
   };
 
   return (
@@ -211,11 +217,8 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
           <div className="overflow-x-auto">
             <div className="min-w-[1400px]">
               {/* Header row with dates */}
-              <div className="grid grid-cols-9 gap-px bg-gray-200">
-                <div className="p-2 font-semibold text-xs bg-gray-50 border-r min-w-[50px] text-center">
-                  Available
-                </div>
-                <div className="p-2 font-semibold text-xs bg-gray-50 border-r min-w-[300px]">
+              <div className="grid grid-cols-8 gap-px bg-gray-200">
+                <div className="p-2 font-semibold text-xs bg-gray-50 border-r min-w-[400px]">
                   <div className="flex items-center space-x-1">
                     <User className="w-3 h-3" />
                     <span>Candidate Details</span>
@@ -224,7 +227,7 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                 {weekDays.map((date) => (
                   <div
                     key={date.toISOString()}
-                    className={`p-2 text-center text-xs font-medium min-w-[120px] ${
+                    className={`p-2 text-center text-xs font-medium min-w-[140px] ${
                       isSameDay(date, new Date()) ? 'bg-blue-50 text-blue-700' : 'bg-gray-50'
                     }`}
                   >
@@ -235,57 +238,67 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
               </div>
 
               {/* Candidate rows */}
-              {candidates.map((candidate) => {
-                const isAvailable = getCandidateAvailability(candidate.id, candidate.available);
-                return (
-                  <div key={candidate.id} className="grid grid-cols-9 gap-px bg-gray-200 border-b">
-                    {/* Availability checkbox */}
-                    <div className="p-2 bg-white border-r flex items-center justify-center min-h-[35px]">
-                      <Checkbox
-                        checked={isAvailable}
-                        onCheckedChange={(checked) => handleAvailabilityChange(candidate.id, !!checked)}
-                        className="h-4 w-4"
-                      />
-                    </div>
-                    
-                    {/* Candidate details in horizontal layout */}
-                    <div className="p-2 bg-white border-r flex items-center justify-between min-h-[35px]">
-                      <CandidateInfoPopover candidate={candidate}>
-                        <div className="cursor-pointer hover:bg-gray-50 p-1 rounded flex items-center space-x-3 flex-1 min-w-0">
-                          <div className="font-medium text-sm text-blue-600 hover:text-blue-800 min-w-[120px]">
-                            {candidate.name}
-                          </div>
-                          <div className="text-xs text-gray-600 min-w-[80px]">
-                            {candidate.phone}
-                          </div>
-                          <Badge variant="outline" className="text-xs px-2 py-0.5 h-5 min-w-[80px] text-center">
-                            {candidate.driverClass}
-                          </Badge>
-                          {candidate.jobCategories && candidate.jobCategories.length > 0 && (
-                            <div className="text-xs text-gray-500 truncate max-w-[100px]">
-                              {candidate.jobCategories[0]}
-                            </div>
-                          )}
+              {candidates.map((candidate) => (
+                <div key={candidate.id} className="grid grid-cols-8 gap-px bg-gray-200 border-b">
+                  {/* Expanded candidate details in horizontal layout */}
+                  <div className="p-3 bg-white border-r flex items-center justify-between min-h-[60px]">
+                    <CandidateInfoPopover candidate={candidate}>
+                      <div className="cursor-pointer hover:bg-gray-50 p-2 rounded flex items-center space-x-4 flex-1 min-w-0">
+                        <div className="font-medium text-sm text-blue-600 hover:text-blue-800 min-w-[120px]">
+                          {candidate.name}
                         </div>
-                      </CandidateInfoPopover>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleAddCandidateNote(candidate)}
-                        className="h-5 w-5 p-0 ml-1 flex-shrink-0"
-                      >
-                        <StickyNote className="w-3 h-3" />
-                      </Button>
-                    </div>
+                        <div className="text-xs text-gray-600 min-w-[110px]">
+                          {candidate.phone}
+                        </div>
+                        <Badge variant="outline" className="text-xs px-2 py-1 h-6 min-w-[90px] text-center">
+                          {candidate.driverClass}
+                        </Badge>
+                        {candidate.jobCategories && candidate.jobCategories.length > 0 && (
+                          <div className="text-xs text-gray-500 min-w-[100px]">
+                            {candidate.jobCategories[0]}
+                          </div>
+                        )}
+                        {candidate.location && (
+                          <div className="text-xs text-gray-400 truncate max-w-[80px]">
+                            {candidate.location.split(',')[0]}
+                          </div>
+                        )}
+                      </div>
+                    </CandidateInfoPopover>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleAddCandidateNote(candidate)}
+                      className="h-6 w-6 p-0 ml-2 flex-shrink-0"
+                    >
+                      <StickyNote className="w-3 h-3" />
+                    </Button>
+                  </div>
+                  
+                  {/* Date columns with split cells */}
+                  {weekDays.map((date) => {
+                    const booking = getBookingForCandidateAndDate(candidate.id, date);
+                    const isAvailable = getCandidateAvailability(candidate.id, date);
                     
-                    {/* Date columns */}
-                    {weekDays.map((date) => {
-                      const booking = getBookingForCandidateAndDate(candidate.id, date);
-                      return (
-                        <div
-                          key={`${candidate.id}-${date.toISOString()}`}
-                          className="p-1 min-h-[35px] bg-white hover:bg-gray-50 relative"
-                        >
+                    return (
+                      <div
+                        key={`${candidate.id}-${date.toISOString()}`}
+                        className="bg-white min-h-[60px] flex flex-col"
+                      >
+                        {/* Top section: Availability toggle */}
+                        <div className="p-1 border-b border-gray-100 flex items-center justify-center h-7 bg-gray-25">
+                          <Checkbox
+                            checked={isAvailable}
+                            onCheckedChange={(checked) => 
+                              handleAvailabilityChange(candidate.id, date, !!checked)
+                            }
+                            className="h-3 w-3"
+                          />
+                          <span className="text-xs text-gray-500 ml-1">Available</span>
+                        </div>
+                        
+                        {/* Bottom section: Booking area */}
+                        <div className="p-1 flex-1 hover:bg-gray-50 relative">
                           {booking ? (
                             <div
                               className={`p-1 rounded cursor-pointer text-xs h-full ${getStatusColor(booking.status, booking.bookingType)} relative`}
@@ -311,23 +324,23 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                               </div>
                             </div>
                           ) : (
-                            <div className="h-full flex items-center justify-center text-gray-400 text-xs">
+                            <div className="h-full flex items-center justify-center">
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={onCreateBooking}
                                 className="text-xs text-gray-400 hover:text-gray-600 h-auto p-1"
                               >
-                                <Plus className="w-2.5 h-2.5" />
+                                <Plus className="w-3 h-3" />
                               </Button>
                             </div>
                           )}
                         </div>
-                      );
-                    })}
-                  </div>
-                );
-              })}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
           </div>
         </CardContent>
