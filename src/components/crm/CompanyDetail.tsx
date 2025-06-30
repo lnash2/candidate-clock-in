@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Phone, Mail, Building2, Calendar, FileText, Users, DollarSign } from 'lucide-react';
+import CompanyRates from './CompanyRates';
 
 interface CompanyDetailProps {
   companyId: number;
@@ -171,7 +172,7 @@ const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
 
       {/* Detailed Tabs */}
       <Tabs defaultValue="history" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="history" className="flex items-center space-x-2">
             <Calendar className="w-4 h-4" />
             <span>History</span>
@@ -183,6 +184,10 @@ const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
           <TabsTrigger value="contacts" className="flex items-center space-x-2">
             <Users className="w-4 h-4" />
             <span>Contacts</span>
+          </TabsTrigger>
+          <TabsTrigger value="rates" className="flex items-center space-x-2">
+            <DollarSign className="w-4 h-4" />
+            <span>Rates</span>
           </TabsTrigger>
           <TabsTrigger value="financial" className="flex items-center space-x-2">
             <DollarSign className="w-4 h-4" />
@@ -279,6 +284,10 @@ const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="rates" className="mt-4">
+          <CompanyRates companyId={companyId} />
         </TabsContent>
 
         <TabsContent value="financial" className="mt-4">

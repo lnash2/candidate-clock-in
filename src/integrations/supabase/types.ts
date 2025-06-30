@@ -88,6 +88,56 @@ export type Database = {
           },
         ]
       }
+      company_rates: {
+        Row: {
+          charge_rate: number
+          created_at: string
+          customer_id: string
+          description: string | null
+          driver_class: string
+          id: string
+          is_active: boolean
+          pay_rate: number
+          updated_at: string
+          valid_from: string
+          valid_to: string | null
+        }
+        Insert: {
+          charge_rate: number
+          created_at?: string
+          customer_id: string
+          description?: string | null
+          driver_class: string
+          id?: string
+          is_active?: boolean
+          pay_rate: number
+          updated_at?: string
+          valid_from?: string
+          valid_to?: string | null
+        }
+        Update: {
+          charge_rate?: number
+          created_at?: string
+          customer_id?: string
+          description?: string | null
+          driver_class?: string
+          id?: string
+          is_active?: boolean
+          pay_rate?: number
+          updated_at?: string
+          valid_from?: string
+          valid_to?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_company_rates_customer"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address_line_1: string | null
