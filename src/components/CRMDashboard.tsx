@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
+import { Menu } from 'lucide-react';
 import AppSidebar from './AppSidebar';
 import CompanyManagement from './crm/CompanyManagement';
 import ContactManagement from './crm/ContactManagement';
@@ -72,12 +73,13 @@ const CRMDashboard = () => {
           onSectionChange={setActiveSection}
         />
         <SidebarInset className="flex-1 flex flex-col bg-white">
-          <header className="flex h-12 shrink-0 items-center border-b bg-white">
-            <div className="flex items-center pl-5">
-              <h1 className="text-lg font-semibold">
-                {getSectionTitle()}
-              </h1>
-            </div>
+          <header className="flex h-12 shrink-0 items-center border-b bg-white px-4">
+            <SidebarTrigger className="mr-4 hover:bg-gray-100 p-2 rounded-md transition-colors">
+              <Menu className="h-4 w-4" />
+            </SidebarTrigger>
+            <h1 className="text-lg font-semibold">
+              {getSectionTitle()}
+            </h1>
           </header>
           <div className="flex-1 overflow-hidden bg-white">
             {renderContent()}
