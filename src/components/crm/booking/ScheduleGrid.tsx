@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, Moon, Sun, Plus, StickyNote, User, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Moon, Sun, Plus, StickyNote, User, ArrowUpDown, ChevronUp, ChevronDown, Pencil } from 'lucide-react';
 import { format, addDays, startOfWeek, isSameDay, parseISO } from 'date-fns';
 import CandidateInfoPopover from './CandidateInfoPopover';
 import AddNoteDialog from './AddNoteDialog';
@@ -259,6 +259,18 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
     }
   };
 
+  const handleCreateBookingForCandidate = (candidate: Candidate, date: Date) => {
+    console.log('Creating booking for candidate:', candidate.id, 'on date:', date);
+    // This would open the booking form with pre-filled candidate and date
+    if (onCreateBooking) {
+      onCreateBooking();
+    }
+  };
+
+  const handleSetAvailability = (candidate: Candidate, date: Date) => {
+    handleOpenAvailabilityDialog(candidate, date);
+  };
+
   return (
     <div className="space-y-6 p-6">
       {/* Header with Add Booking Button */}
@@ -314,17 +326,31 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
 
               {/* Candidate rows */}
               {candidates.map((candidate, index) => (
-                <div key={candidate.id} className={`flex border-b border-gray-200 h-12 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                <div key={candidate.id} className={`flex border-b border-gray-200 h-10 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
                   {/* Candidate details */}
-                  <div className="w-[350px] bg-white border-r border-gray-200 sticky left-0 z-10 flex items-center justify-between h-12 px-3">
+                  <div className="w-[350px] bg-white border-r border-gray-200 sticky left-0 z-10 flex items-center justify-between h-10 px-3">
                     <CandidateInfoPopover candidate={candidate} onOpenRecord={handleOpenCandidateRecord}>
                       <div className="cursor-pointer hover:bg-gray-50 px-2 py-1 rounded flex-1 min-w-0 transition-colors flex items-center space-x-3">
-                        <div className="font-medium text-sm text-blue-600 hover:text-blue-800 truncate min-w-0">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenCandidateRecord(candidate.id);
+                          }}
+                          className="font-medium text-sm text-blue-600 hover:text-blue-800 hover:underline truncate min-w-0 cursor-pointer transition-colors"
+                        >
                           {candidate.name}
-                        </div>
-                        <div className="text-xs text-gray-500 truncate">
-                          {candidate.phone}
-                        </div>
+                        </button>
+                        {candidate.phone && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(`tel:${candidate.phone}`, '_self');
+                            }}
+                            className="text-xs text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors truncate"
+                          >
+                            {candidate.phone}
+                          </button>
+                        )}
                         <Badge variant="outline" className="text-xs px-1.5 py-0.5 bg-blue-50 text-blue-700 border-blue-200 flex-shrink-0">
                           {candidate.driverClass}
                         </Badge>
@@ -343,12 +369,11 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                   {/* Date columns */}
                   {weekDays.map((date) => {
                     const booking = getBookingForCandidateAndDate(candidate.id, date);
-                    const isAvailable = getCandidateAvailability(candidate.id, date);
                     
                     return (
                       <div
                         key={`${candidate.id}-${date.toISOString()}`}
-                        className="flex-1 bg-white h-12 flex items-center justify-center px-2 border-r border-gray-200 last:border-r-0"
+                        className="flex-1 bg-white h-10 flex items-center justify-center px-2 border-r border-gray-200 last:border-r-0"
                       >
                         {booking ? (
                           <div
@@ -373,13 +398,25 @@ const ScheduleGrid = ({ bookings, onBookingClick, onCreateBooking }: ScheduleGri
                             </div>
                           </div>
                         ) : (
-                          <div
-                            className={`px-2 py-1 rounded text-xs w-full h-8 flex items-center justify-center cursor-pointer transition-colors ${getAvailabilityColor(isAvailable)}`}
-                            onClick={() => handleAvailabilityClick(candidate, date)}
-                          >
-                            <span className="font-medium text-xs">
-                              {isAvailable ? 'Available' : 'Unavailable'}
-                            </span>
+                          <div className="flex items-center space-x-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleCreateBookingForCandidate(candidate, date)}
+                              className="h-6 w-6 p-0 hover:bg-blue-50"
+                              title="Create booking"
+                            >
+                              <Plus className="w-3 h-3 text-blue-600" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleSetAvailability(candidate, date)}
+                              className="h-6 w-6 p-0 hover:bg-gray-50"
+                              title="Set availability"
+                            >
+                              <Pencil className="w-3 h-3 text-gray-600" />
+                            </Button>
                           </div>
                         )}
                       </div>
