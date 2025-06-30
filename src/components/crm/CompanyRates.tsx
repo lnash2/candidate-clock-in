@@ -2,29 +2,13 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Trash2, DollarSign, Clock, Calendar } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-
-interface CompanyRatesProps {
-  companyId: number;
-}
-
-interface CompanyRate {
-  id: string;
-  driver_class: string;
-  rate_category: string;
-  charge_rate: number;
-  pay_rate: number;
-  description?: string;
-  valid_from: string;
-  valid_to?: string;
-  is_active: boolean;
-}
+import { Plus } from 'lucide-react';
+import { Dialog, DialogTrigger } from '@/components/ui/dialog';
+import { CompanyRate, CompanyRatesProps, RateFormData } from './rates/types';
+import RateFormDialog from './rates/RateFormDialog';
+import RatesTable from './rates/RatesTable';
+import EmptyRatesState from './rates/EmptyRatesState';
 
 const CompanyRates = ({ companyId }: CompanyRatesProps) => {
   const [rates, setRates] = useState<CompanyRate[]>([
@@ -72,7 +56,7 @@ const CompanyRates = ({ companyId }: CompanyRatesProps) => {
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingRate, setEditingRate] = useState<CompanyRate | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<RateFormData>({
     driver_class: '',
     rate_category: 'days',
     charge_rate: '',
@@ -81,14 +65,6 @@ const CompanyRates = ({ companyId }: CompanyRatesProps) => {
     valid_from: new Date().toISOString().split('T')[0],
     valid_to: ''
   });
-
-  const driverClasses = ['Class 1', 'Class 2', 'Class 3', 'Specialist', 'Trainee'];
-  const rateCategories = [
-    { value: 'days', label: 'Days', icon: Calendar },
-    { value: 'nights', label: 'Nights', icon: Clock },
-    { value: 'saturday', label: 'Saturday', icon: Calendar },
-    { value: 'sunday', label: 'Sunday', icon: Calendar }
-  ];
 
   const handleAddRate = () => {
     const newRate: CompanyRate = {
@@ -160,22 +136,17 @@ const CompanyRates = ({ companyId }: CompanyRatesProps) => {
     });
   };
 
-  const getMargin = (chargeRate: number, payRate: number) => {
-    return chargeRate - payRate;
-  };
-
-  const getMarginPercent = (chargeRate: number, payRate: number) => {
-    return ((chargeRate - payRate) / chargeRate * 100);
-  };
-
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'days': return 'bg-blue-100 text-blue-800';
-      case 'nights': return 'bg-purple-100 text-purple-800';
-      case 'saturday': return 'bg-green-100 text-green-800';
-      case 'sunday': return 'bg-orange-100 text-orange-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+  const handleAddRateForClass = (driverClass: string, category?: string) => {
+    setFormData({
+      driver_class: driverClass,
+      rate_category: category || 'days',
+      charge_rate: '',
+      pay_rate: '',
+      description: '',
+      valid_from: new Date().toISOString().split('T')[0],
+      valid_to: ''
+    });
+    setIsAddDialogOpen(true);
   };
 
   // Group rates by driver class
@@ -201,97 +172,14 @@ const CompanyRates = ({ companyId }: CompanyRatesProps) => {
               Add Rate
             </Button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Rate</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="driver_class">Driver Class</Label>
-                <Select value={formData.driver_class} onValueChange={(value) => setFormData({...formData, driver_class: value})}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select driver class" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {driverClasses.map(cls => (
-                      <SelectItem key={cls} value={cls}>{cls}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="rate_category">Rate Category</Label>
-                <Select value={formData.rate_category} onValueChange={(value) => setFormData({...formData, rate_category: value})}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {rateCategories.map(category => (
-                      <SelectItem key={category.value} value={category.value}>
-                        {category.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="charge_rate">Charge Rate (£/hour)</Label>
-                  <Input
-                    id="charge_rate"
-                    type="number"
-                    step="0.01"
-                    value={formData.charge_rate}
-                    onChange={(e) => setFormData({...formData, charge_rate: e.target.value})}
-                    placeholder="24.00"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="pay_rate">Pay Rate (£/hour)</Label>
-                  <Input
-                    id="pay_rate"
-                    type="number"
-                    step="0.01"
-                    value={formData.pay_rate}
-                    onChange={(e) => setFormData({...formData, pay_rate: e.target.value})}
-                    placeholder="20.00"
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Input
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  placeholder="Rate description"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="valid_from">Valid From</Label>
-                  <Input
-                    id="valid_from"
-                    type="date"
-                    value={formData.valid_from}
-                    onChange={(e) => setFormData({...formData, valid_from: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="valid_to">Valid To (Optional)</Label>
-                  <Input
-                    id="valid_to"
-                    type="date"
-                    value={formData.valid_to}
-                    onChange={(e) => setFormData({...formData, valid_to: e.target.value})}
-                  />
-                </div>
-              </div>
-              <Button onClick={handleAddRate} className="w-full">
-                Add Rate
-              </Button>
-            </div>
-          </DialogContent>
+          <RateFormDialog
+            isOpen={isAddDialogOpen}
+            onOpenChange={setIsAddDialogOpen}
+            title="Add New Rate"
+            formData={formData}
+            onFormDataChange={setFormData}
+            onSubmit={handleAddRate}
+          />
         </Dialog>
       </div>
 
@@ -309,18 +197,7 @@ const CompanyRates = ({ companyId }: CompanyRatesProps) => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    setFormData({
-                      driver_class: driverClass,
-                      rate_category: 'days',
-                      charge_rate: '',
-                      pay_rate: '',
-                      description: '',
-                      valid_from: new Date().toISOString().split('T')[0],
-                      valid_to: ''
-                    });
-                    setIsAddDialogOpen(true);
-                  }}
+                  onClick={() => handleAddRateForClass(driverClass)}
                 >
                   <Plus className="w-3 h-3 mr-1" />
                   Add Rate
@@ -328,219 +205,23 @@ const CompanyRates = ({ companyId }: CompanyRatesProps) => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Charge Rate</TableHead>
-                    <TableHead>Pay Rate</TableHead>
-                    <TableHead>Margin</TableHead>
-                    <TableHead>Valid Period</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rateCategories.map(category => {
-                    const rate = categoryRates[category.value];
-                    const IconComponent = category.icon;
-                    
-                    return (
-                      <TableRow key={category.value}>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <IconComponent className="w-4 h-4" />
-                            <Badge className={getCategoryColor(category.value)}>
-                              {category.label}
-                            </Badge>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {rate ? (
-                            <span className="text-lg font-bold text-green-600">
-                              £{rate.charge_rate.toFixed(2)}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">Not set</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {rate ? (
-                            <span className="text-lg font-bold text-blue-600">
-                              £{rate.pay_rate.toFixed(2)}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">Not set</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {rate ? (
-                            <span className="font-bold text-purple-600">
-                              £{(rate.charge_rate - rate.pay_rate).toFixed(2)} ({(((rate.charge_rate - rate.pay_rate) / rate.charge_rate) * 100).toFixed(1)}%)
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {rate ? (
-                            <div className="text-xs">
-                              <div>{rate.valid_from}</div>
-                              {rate.valid_to && <div>to {rate.valid_to}</div>}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {rate ? (
-                            <div className="flex items-center space-x-2">
-                              <Dialog>
-                                <DialogTrigger asChild>
-                                  <Button variant="outline" size="sm" onClick={() => handleEditRate(rate)}>
-                                    <Edit className="w-3 h-3" />
-                                  </Button>
-                                </DialogTrigger>
-                                <DialogContent>
-                                  <DialogHeader>
-                                    <DialogTitle>Edit Rate</DialogTitle>
-                                  </DialogHeader>
-                                  <div className="space-y-4">
-                                    <div>
-                                      <Label htmlFor="edit_driver_class">Driver Class</Label>
-                                      <Select value={formData.driver_class} onValueChange={(value) => setFormData({...formData, driver_class: value})}>
-                                        <SelectTrigger>
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {driverClasses.map(cls => (
-                                            <SelectItem key={cls} value={cls}>{cls}</SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    <div>
-                                      <Label htmlFor="edit_rate_category">Rate Category</Label>
-                                      <Select value={formData.rate_category} onValueChange={(value) => setFormData({...formData, rate_category: value})}>
-                                        <SelectTrigger>
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {rateCategories.map(cat => (
-                                            <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                      <div>
-                                        <Label htmlFor="edit_charge_rate">Charge Rate (£/hour)</Label>
-                                        <Input
-                                          id="edit_charge_rate"
-                                          type="number"
-                                          step="0.01"
-                                          value={formData.charge_rate}
-                                          onChange={(e) => setFormData({...formData, charge_rate: e.target.value})}
-                                        />
-                                      </div>
-                                      <div>
-                                        <Label htmlFor="edit_pay_rate">Pay Rate (£/hour)</Label>
-                                        <Input
-                                          id="edit_pay_rate"
-                                          type="number"
-                                          step="0.01"
-                                          value={formData.pay_rate}
-                                          onChange={(e) => setFormData({...formData, pay_rate: e.target.value})}
-                                        />
-                                      </div>
-                                    </div>
-                                    <div>
-                                      <Label htmlFor="edit_description">Description</Label>
-                                      <Input
-                                        id="edit_description"
-                                        value={formData.description}
-                                        onChange={(e) => setFormData({...formData, description: e.target.value})}
-                                      />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                      <div>
-                                        <Label htmlFor="edit_valid_from">Valid From</Label>
-                                        <Input
-                                          id="edit_valid_from"
-                                          type="date"
-                                          value={formData.valid_from}
-                                          onChange={(e) => setFormData({...formData, valid_from: e.target.value})}
-                                        />
-                                      </div>
-                                      <div>
-                                        <Label htmlFor="edit_valid_to">Valid To (Optional)</Label>
-                                        <Input
-                                          id="edit_valid_to"
-                                          type="date"
-                                          value={formData.valid_to}
-                                          onChange={(e) => setFormData({...formData, valid_to: e.target.value})}
-                                        />
-                                      </div>
-                                    </div>
-                                    <Button onClick={handleUpdateRate} className="w-full">
-                                      Update Rate
-                                    </Button>
-                                  </div>
-                                </DialogContent>
-                              </Dialog>
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => handleDeleteRate(rate.id)}
-                                className="text-red-600 hover:text-red-700"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setFormData({
-                                  driver_class: driverClass,
-                                  rate_category: category.value,
-                                  charge_rate: '',
-                                  pay_rate: '',
-                                  description: '',
-                                  valid_from: new Date().toISOString().split('T')[0],
-                                  valid_to: ''
-                                });
-                                setIsAddDialogOpen(true);
-                              }}
-                            >
-                              <Plus className="w-3 h-3 mr-1" />
-                              Set Rate
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+              <RatesTable
+                rates={categoryRates}
+                driverClass={driverClass}
+                onEditRate={handleEditRate}
+                onDeleteRate={handleDeleteRate}
+                onAddRate={handleAddRateForClass}
+                editingRate={editingRate}
+                formData={formData}
+                onFormDataChange={setFormData}
+                onUpdateRate={handleUpdateRate}
+              />
             </CardContent>
           </Card>
         ))}
         
         {Object.keys(groupedRates).length === 0 && (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <DollarSign className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">No rates set</h3>
-              <p className="text-muted-foreground mb-4">
-                Add company-specific rates for different driver classes and time periods
-              </p>
-              <Button onClick={() => setIsAddDialogOpen(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add First Rate
-              </Button>
-            </CardContent>
-          </Card>
+          <EmptyRatesState onAddRate={() => setIsAddDialogOpen(true)} />
         )}
       </div>
     </div>
