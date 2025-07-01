@@ -3,13 +3,6 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
-const { corsOptions } = require('./config/cors');
-const healthRoutes = require('./routes/health');
-const testConnectionRoutes = require('./routes/testConnection');
-const migrateDataRoutes = require('./routes/migrateData');
-const syncDataRoutes = require('./routes/syncData');
-const debugRoutes = require('./routes/debug');
-
 const app = express();
 
 // Railway-specific port handling - MUST bind to 0.0.0.0
@@ -36,106 +29,89 @@ try {
   process.exit(1);
 }
 
-// Enhanced request logging middleware
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  const timestamp = new Date().toISOString();
-  
-  console.log(`\n🌐 [${timestamp}] ${req.method} ${req.url}`);
-  console.log(`📋 Origin: ${origin || 'no origin'}`);
-  console.log(`📋 User-Agent: ${req.headers['user-agent'] || 'unknown'}`);
-  console.log(`📋 Content-Type: ${req.headers['content-type'] || 'none'}`);
-  
-  // Log if this is a preflight request
-  if (req.method === 'OPTIONS') {
-    console.log('✈️ PREFLIGHT REQUEST detected');
-    console.log(`📋 Access-Control-Request-Method: ${req.headers['access-control-request-method'] || 'none'}`);
-    console.log(`📋 Access-Control-Request-Headers: ${req.headers['access-control-request-headers'] || 'none'}`);
-  }
-  
-  next();
-});
+// CORS configuration
+const corsOptions = {
+  origin: [
+    'https://lovable.dev',
+    'https://www.lovable.dev',
+    'https://gptengineer.app',
+    'https://www.gptengineer.app',
+    /^https:\/\/.*\.lovable\.dev$/,
+    /^https:\/\/.*\.gptengineer\.app$/,
+    /^https:\/\/.*\.lovableproject\.com$/,
+    'https://0b88ce54-c9a6-4d2e-a553-df1b0e0a248d.lovableproject.com',
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:8080',
+    'https://candidate-clock-in-production.up.railway.app'
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Access-Control-Request-Method',
+    'Access-Control-Request-Headers'
+  ],
+  credentials: false,
+  optionsSuccessStatus: 200,
+  preflightContinue: false
+};
 
-// Apply CORS middleware with detailed logging
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  const allowedOrigins = corsOptions.origin;
-  
-  // Check if origin is allowed
-  let isAllowed = false;
-  if (typeof allowedOrigins === 'string') {
-    isAllowed = allowedOrigins === origin;
-  } else if (Array.isArray(allowedOrigins)) {
-    isAllowed = allowedOrigins.some(allowed => {
-      if (typeof allowed === 'string') {
-        return allowed === origin;
-      } else if (allowed instanceof RegExp) {
-        return allowed.test(origin);
-      }
-      return false;
-    });
-  }
-  
-  console.log(`🔒 CORS Check: Origin ${origin} ${isAllowed ? '✅ ALLOWED' : '❌ BLOCKED'}`);
-  next();
-});
-
+// Apply CORS first
 app.use(cors(corsOptions));
 
 // Parse JSON with increased limit
 app.use(express.json({ limit: '50mb' }));
 
-// Response logging middleware
+// Simple request logging
 app.use((req, res, next) => {
-  const originalSend = res.send;
-  res.send = function(data) {
-    console.log(`📤 Response: ${res.statusCode} for ${req.method} ${req.url}`);
-    if (res.statusCode >= 400) {
-      console.log(`❌ Error response data:`, data);
-    }
-    originalSend.call(this, data);
-  };
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
   next();
 });
 
-// Railway health check endpoint (must be first)
+// Railway health check endpoint (must be first and simple)
 app.get('/', (req, res) => {
-  const serverInfo = {
+  console.log('🏠 Root health check accessed');
+  res.json({
     status: 'healthy',
     message: 'PCRM Proxy Service v2.0 is running',
     timestamp: new Date().toISOString(),
     version: '2.0.0',
-    cors_enabled: true,
-    allowed_origins_count: corsOptions.origin.length,
     environment: process.env.NODE_ENV || 'development',
-    railway_environment: process.env.RAILWAY_ENVIRONMENT || 'none',
-    host: host,
-    port: port,
-    uptime: process.uptime(),
-    available_routes: ['/health', '/debug', '/test-connection', '/migrate-data', '/sync-data']
-  };
-  
-  console.log('🏠 Root health check accessed (v2.0):', serverInfo);
-  res.json(serverInfo);
+    railway_environment: process.env.RAILWAY_ENVIRONMENT || 'none'
+  });
 });
 
-// Routes
-app.use('/health', healthRoutes);
-app.use('/debug', debugRoutes);
-app.use('/test-connection', testConnectionRoutes);
-app.use('/migrate-data', migrateDataRoutes);
-app.use('/sync-data', syncDataRoutes);
+// Load routes with error handling
+try {
+  const healthRoutes = require('./routes/health');
+  const debugRoutes = require('./routes/debug');
+  const testConnectionRoutes = require('./routes/testConnection');
+  const migrateDataRoutes = require('./routes/migrateData');
+  const syncDataRoutes = require('./routes/syncData');
+
+  app.use('/health', healthRoutes);
+  app.use('/debug', debugRoutes);
+  app.use('/test-connection', testConnectionRoutes);
+  app.use('/migrate-data', migrateDataRoutes);
+  app.use('/sync-data', syncDataRoutes);
+  
+  console.log('✅ All routes loaded successfully');
+} catch (error) {
+  console.error('❌ Error loading routes:', error.message);
+  process.exit(1);
+}
 
 // Error handling middleware
 app.use((error, req, res, next) => {
-  console.error('🚨 Server error:', error);
-  console.error('🚨 Stack trace:', error.stack);
+  console.error('🚨 Server error:', error.message);
   res.status(500).json({
     success: false,
     error: error.message,
     timestamp: new Date().toISOString(),
-    endpoint: req.url,
-    method: req.method,
     version: '2.0.0'
   });
 });
@@ -161,18 +137,11 @@ const server = app.listen(port, host, (err) => {
   
   console.log(`\n✅ PCRM Proxy Service v2.0 successfully started!`);
   console.log(`📡 Listening on: ${host}:${port}`);
-  console.log(`🌐 CORS origins: ${corsOptions.origin.length} configured`);
   console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🚢 Railway environment: ${process.env.RAILWAY_ENVIRONMENT || 'none'}`);
   console.log(`🔗 Public URL: https://candidate-clock-in-production.up.railway.app`);
   console.log(`❤️ Health check: https://candidate-clock-in-production.up.railway.app/`);
-  console.log(`🔍 Debug endpoint: https://candidate-clock-in-production.up.railway.app/debug`);
   console.log(`⚡ Server ready to accept connections on ${host}:${port}`);
-  
-  // Additional Railway-specific logging
-  if (process.env.RAILWAY_ENVIRONMENT) {
-    console.log(`🚂 Railway deployment successful - service is publicly accessible`);
-  }
 });
 
 // Enhanced graceful shutdown

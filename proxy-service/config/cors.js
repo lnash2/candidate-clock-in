@@ -24,7 +24,7 @@ const corsOptions = {
     'Access-Control-Request-Method',
     'Access-Control-Request-Headers'
   ],
-  credentials: false, // Fixed: Match frontend setting
+  credentials: false,
   optionsSuccessStatus: 200,
   preflightContinue: false
 };
