@@ -33,6 +33,9 @@ const MigrationDashboard = () => {
   const [connectionString, setConnectionString] = useState('');
   const { toast } = useToast();
 
+  // Railway proxy service URL
+  const PROXY_SERVICE_URL = 'https://candidate-clock-in-production.up.railway.app';
+
   useEffect(() => {
     fetchMigrationStatus();
   }, []);
@@ -69,32 +72,37 @@ const MigrationDashboard = () => {
     setIsTestingConnection(true);
     
     try {
-      console.log('🔍 Testing connection via simple proxy service');
+      console.log('🔍 Testing connection via Railway proxy service');
 
-      const response = await supabase.functions.invoke('test-legacy-connection-simple', {
-        body: { connectionString }
+      const response = await fetch(`${PROXY_SERVICE_URL}/test-connection`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ connectionString })
       });
 
-      console.log('📋 Connection test response:', response);
+      console.log('📋 Proxy response status:', response.status);
 
-      if (response.error) {
-        console.error('❌ Function invocation error:', response.error);
-        throw response.error;
+      const data = await response.json();
+      console.log('📋 Proxy response data:', data);
+
+      if (!response.ok) {
+        console.error('❌ Proxy service error:', data);
+        throw new Error(data.error || `Request failed with status ${response.status}`);
       }
 
-      if (response.data?.success) {
-        const message = response.data.proxy_used 
-          ? `Database connection successful via proxy service! Found ${response.data.table_count} tables.`
-          : `Database connection successful! Found ${response.data.table_count} tables.`;
+      if (data.success) {
+        const message = `Database connection successful! Found ${data.table_count} tables.`;
           
         toast({
           title: 'Success! 🎉',
           description: message,
         });
-        console.log('✅ Connection successful via simple proxy');
+        console.log('✅ Connection successful via Railway proxy');
       } else {
-        console.error('❌ Connection failed with errors:', response.data);
-        throw new Error(response.data?.error || 'Connection failed with unknown error');
+        console.error('❌ Connection failed:', data);
+        throw new Error(data.error || 'Connection failed with unknown error');
       }
     } catch (error) {
       console.error('🚨 Connection test error:', error);
@@ -132,15 +140,26 @@ const MigrationDashboard = () => {
         .map(t => t.trim())
         .filter(t => t.length > 0);
 
-      const response = await supabase.functions.invoke('migrate-legacy-data', {
-        body: {
+      console.log('🚀 Starting migration via Railway proxy service');
+
+      const response = await fetch(`${PROXY_SERVICE_URL}/migrate-data`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           connectionString,
           tables: tables.length > 0 ? tables : [],
           batchSize
-        }
+        })
       });
 
-      if (response.error) throw response.error;
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('❌ Migration failed:', data);
+        throw new Error(data.error || 'Migration failed');
+      }
 
       toast({
         title: 'Success',
@@ -163,14 +182,25 @@ const MigrationDashboard = () => {
 
   const startSync = async (tableName: string) => {
     try {
-      const response = await supabase.functions.invoke('sync-legacy-data', {
-        body: {
+      console.log('🔄 Starting sync via Railway proxy service');
+
+      const response = await fetch(`${PROXY_SERVICE_URL}/sync-data`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           connectionString,
           tableName
-        }
+        })
       });
 
-      if (response.error) throw response.error;
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('❌ Sync failed:', data);
+        throw new Error(data.error || 'Sync failed');
+      }
 
       toast({
         title: 'Success',
@@ -234,9 +264,9 @@ const MigrationDashboard = () => {
               <CardTitle>Database Connection Configuration</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-800">
-                <strong>🔧 Using New Simple Connection Test</strong><br/>
-                Now using a simplified Edge Function that should bypass environment variable issues and connect directly to the proxy service.
+              <div className="bg-green-50 border border-green-200 rounded p-3 text-sm text-green-800">
+                <strong>🚀 Now Using Railway Proxy Service</strong><br/>
+                Direct connection to the Node.js proxy service running on Railway. This bypasses Supabase Edge Function issues and provides reliable database connectivity.
               </div>
 
               <div>
@@ -266,11 +296,12 @@ const MigrationDashboard = () => {
               </div>
 
               <div className="bg-green-50 border border-green-200 rounded p-3 text-sm text-green-800">
-                <strong>✅ Proxy Service Benefits:</strong><br/>
+                <strong>✅ Railway Proxy Service Benefits:</strong><br/>
                 • Handles expired SSL certificates automatically<br/>
                 • Better error handling and debugging<br/>
                 • No timeout issues for large datasets<br/>
-                • Reliable PostgreSQL connection management
+                • Reliable PostgreSQL connection management<br/>
+                • Direct HTTP calls, no Edge Function limitations
               </div>
 
               <Button
@@ -282,12 +313,12 @@ const MigrationDashboard = () => {
                 {isTestingConnection ? (
                   <>
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Testing Connection via Simple Proxy...
+                    Testing Connection via Railway Proxy...
                   </>
                 ) : (
                   <>
                     <TestTube className="mr-2 h-4 w-4" />
-                    Test Database Connection (Simple)
+                    Test Database Connection (Railway)
                   </>
                 )}
               </Button>
@@ -330,7 +361,7 @@ const MigrationDashboard = () => {
                 {isLoading ? (
                   <>
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Starting Migration...
+                    Starting Migration via Railway...
                   </>
                 ) : (
                   <>
