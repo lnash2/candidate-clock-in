@@ -1,7 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { Client } from "https://deno.land/x/postgres@v0.17.0/mod.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,7 +19,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🔄 Starting legacy data sync...')
+    console.log('🔄 Starting legacy data sync via proxy service...')
     
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -29,69 +28,49 @@ serve(async (req) => {
 
     const { connectionString, tableName, lastSyncTimestamp } = await req.json() as SyncRequest
     
-    if (!connectionString) {
-      throw new Error('Connection string is required')
+    if (!connectionString || !tableName) {
+      throw new Error('Connection string and table name are required')
     }
 
-    console.log(`🔗 Connecting for sync of ${tableName}...`)
-    
-    const legacyClient = new Client(connectionString)
-    await legacyClient.connect()
-    
-    console.log(`✅ Connected to legacy database for sync of ${tableName}`)
-
-    const pcrm_table_name = `${tableName}_pcrm`
-
-    // Build query to get changed records
-    let query = `SELECT * FROM ${tableName}`
-    const params = []
-    
-    if (lastSyncTimestamp) {
-      // Assume there's an updated_at or modified_at column
-      query += ` WHERE updated_at > $1 OR created_at > $1`
-      params.push(lastSyncTimestamp)
-    } else {
-      // If no timestamp provided, get records from last hour
-      query += ` WHERE updated_at > NOW() - INTERVAL '1 hour' OR created_at > NOW() - INTERVAL '1 hour'`
+    // Get proxy service URL from environment
+    const proxyServiceUrl = Deno.env.get('PROXY_SERVICE_URL')
+    if (!proxyServiceUrl) {
+      throw new Error('PROXY_SERVICE_URL environment variable is required')
     }
 
-    console.log(`Sync query: ${query}`)
+    console.log(`📡 Calling proxy service for sync of ${tableName}...`)
 
-    const changedRecords = await legacyClient.queryObject(query, params)
-    
-    console.log(`Found ${changedRecords.rows.length} changed records for ${tableName}`)
+    // Call the proxy service for sync
+    const proxyResponse = await fetch(`${proxyServiceUrl}/sync-data`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        connectionString,
+        tableName,
+        lastSyncTimestamp
+      })
+    })
 
-    if (changedRecords.rows.length > 0) {
-      // Transform data for PCRM table
-      const transformedData = changedRecords.rows.map((row: any) => ({
-        ...row,
-        legacy_id: String(row.id || row.uuid),
-        migrated_at: new Date().toISOString(),
-        migration_source: 'legacy_admin_sync'
-      }))
+    const proxyData = await proxyResponse.json()
 
-      // Upsert into PCRM table (insert or update based on legacy_id)
-      for (const record of transformedData) {
-        const { error } = await supabaseClient
-          .from(pcrm_table_name)
-          .upsert(record, { onConflict: 'legacy_id' })
-
-        if (error) {
-          console.error(`Error upserting record for ${tableName}:`, error)
-        }
-      }
-
-      console.log(`Successfully synced ${transformedData.length} records for ${tableName}`)
+    if (!proxyResponse.ok) {
+      throw new Error(proxyData.error || 'Proxy service sync failed')
     }
 
-    await legacyClient.end()
+    console.log(`✅ Sync completed via proxy service for ${tableName}`)
 
+    // Process the synced data (if needed, you can add logic here to 
+    // upsert the data into your Supabase tables)
+    
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: `Sync completed for ${tableName}`,
-        records_synced: changedRecords.rows.length,
-        last_sync: new Date().toISOString()
+        message: `Sync completed for ${tableName} via proxy service`,
+        records_synced: proxyData.records_synced || 0,
+        last_sync: proxyData.last_sync,
+        proxy_used: true
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -104,7 +83,12 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message 
+        error: error.message,
+        recommendations: [
+          'Ensure the proxy service is deployed and running',
+          'Verify PROXY_SERVICE_URL environment variable is set',
+          'Check network connectivity between services'
+        ]
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

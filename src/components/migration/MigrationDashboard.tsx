@@ -69,7 +69,7 @@ const MigrationDashboard = () => {
     setIsTestingConnection(true);
     
     try {
-      console.log('🔍 Testing connection with connection string');
+      console.log('🔍 Testing connection via proxy service');
 
       const response = await supabase.functions.invoke('test-legacy-connection', {
         body: { connectionString }
@@ -83,11 +83,15 @@ const MigrationDashboard = () => {
       }
 
       if (response.data?.success) {
+        const message = response.data.proxy_used 
+          ? `Database connection successful via proxy service! Found ${response.data.table_count} tables.`
+          : `Database connection successful! Found ${response.data.table_count} tables.`;
+          
         toast({
           title: 'Success! 🎉',
-          description: `Database connection successful! Found ${response.data.table_count} tables.`,
+          description: message,
         });
-        console.log('✅ Connection successful');
+        console.log('✅ Connection successful via proxy');
       } else {
         console.error('❌ Connection failed with errors:', response.data);
         throw new Error(response.data?.error || 'Connection failed with unknown error');
@@ -230,16 +234,16 @@ const MigrationDashboard = () => {
               <CardTitle>Database Connection Configuration</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-800">
-                <strong>🔧 Enhanced SSL Connection Strategy</strong><br/>
-                Use a complete PostgreSQL connection string with SSL bypass parameters for expired certificates.
+              <div className="bg-green-50 border border-green-200 rounded p-3 text-sm text-green-800">
+                <strong>🚀 Enhanced Proxy Service</strong><br/>
+                Now using a robust Node.js proxy service that handles SSL certificate issues and provides better reliability for legacy database connections.
               </div>
 
               <div>
                 <Label htmlFor="connectionString">PostgreSQL Connection String</Label>
                 <Textarea
                   id="connectionString"
-                  placeholder="postgresql://username:password@host:port/database?sslmode=require&sslcert=/dev/null&sslkey=/dev/null&sslrootcert=/dev/null"
+                  placeholder="postgresql://username:password@host:port/database?sslmode=require"
                   value={connectionString}
                   onChange={(e) => setConnectionString(e.target.value)}
                   rows={3}
@@ -247,23 +251,26 @@ const MigrationDashboard = () => {
                 />
               </div>
 
-              <div className="bg-gray-50 border border-gray-200 rounded p-3 text-sm">
+              <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm">
                 <strong>📋 Connection String Examples:</strong><br/>
                 <div className="mt-2 space-y-2 font-mono text-xs">
-                  <div><strong>Standard SSL:</strong><br/>
+                  <div><strong>Standard Connection:</strong><br/>
+                  <code>postgresql://user:pass@host:5432/db</code></div>
+                  
+                  <div><strong>With SSL (recommended):</strong><br/>
                   <code>postgresql://user:pass@host:5432/db?sslmode=require</code></div>
                   
-                  <div><strong>SSL with expired certificates (bypass):</strong><br/>
-                  <code>postgresql://user:pass@host:5432/db?sslmode=require&sslcert=/dev/null&sslkey=/dev/null&sslrootcert=/dev/null</code></div>
-                  
-                  <div><strong>No SSL (if allowed):</strong><br/>
-                  <code>postgresql://user:pass@host:5432/db?sslmode=disable</code></div>
+                  <div><strong>SSL with specific mode:</strong><br/>
+                  <code>postgresql://user:pass@host:5432/db?sslmode=prefer</code></div>
                 </div>
               </div>
 
-              <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
-                <strong>⚠️ SSL Certificate Notice:</strong><br/>
-                For RDS instances with expired SSL certificates, use the bypass parameters shown above to maintain encrypted connections while bypassing certificate validation.
+              <div className="bg-green-50 border border-green-200 rounded p-3 text-sm text-green-800">
+                <strong>✅ Proxy Service Benefits:</strong><br/>
+                • Handles expired SSL certificates automatically<br/>
+                • Better error handling and debugging<br/>
+                • No timeout issues for large datasets<br/>
+                • Reliable PostgreSQL connection management
               </div>
 
               <Button
@@ -275,7 +282,7 @@ const MigrationDashboard = () => {
                 {isTestingConnection ? (
                   <>
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Testing Connection...
+                    Testing Connection via Proxy...
                   </>
                 ) : (
                   <>

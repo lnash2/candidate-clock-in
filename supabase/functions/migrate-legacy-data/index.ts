@@ -1,6 +1,6 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { Client } from "https://deno.land/x/postgres@v0.17.0/mod.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,7 +19,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🚀 Starting legacy data migration...')
+    console.log('🚀 Starting legacy data migration via proxy service...')
     
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -32,160 +32,80 @@ serve(async (req) => {
       throw new Error('Connection string is required')
     }
 
-    console.log('🔗 Connecting with provided connection string...')
-    
-    const legacyClient = new Client(connectionString)
-    await legacyClient.connect()
-    
-    console.log('✅ Connected to legacy database successfully')
-
-    // Get all tables from legacy database if not specified
-    let tablesToMigrate = tables
-    if (!tablesToMigrate || tablesToMigrate.length === 0) {
-      const tableResult = await legacyClient.queryObject(`
-        SELECT table_name 
-        FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-        AND table_type = 'BASE TABLE'
-      `)
-      tablesToMigrate = tableResult.rows.map((row: any) => row.table_name)
+    // Get proxy service URL from environment
+    const proxyServiceUrl = Deno.env.get('PROXY_SERVICE_URL')
+    if (!proxyServiceUrl) {
+      throw new Error('PROXY_SERVICE_URL environment variable is required')
     }
 
-    console.log(`Found ${tablesToMigrate.length} tables to migrate:`, tablesToMigrate)
+    console.log('📡 Calling proxy service for migration...')
 
+    // Call the proxy service for migration
+    const proxyResponse = await fetch(`${proxyServiceUrl}/migrate-data`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        connectionString,
+        tables: tables || [],
+        batchSize: batchSize || 1000
+      })
+    })
+
+    const proxyData = await proxyResponse.json()
+
+    if (!proxyResponse.ok) {
+      throw new Error(proxyData.error || 'Proxy service migration failed')
+    }
+
+    console.log('✅ Migration analysis completed via proxy service')
+
+    // Update migration status in Supabase based on proxy results
     const results = []
+    
+    if (proxyData.results && Array.isArray(proxyData.results)) {
+      for (const tableResult of proxyData.results) {
+        try {
+          // Update migration status
+          await supabaseClient
+            .from('migration_status')
+            .upsert({
+              table_name: tableResult.table,
+              status: tableResult.status,
+              total_records: tableResult.total_records || 0,
+              migrated_records: tableResult.migrated_records || 0,
+              started_at: new Date().toISOString(),
+              completed_at: tableResult.status === 'completed' ? new Date().toISOString() : null,
+              error_message: tableResult.error || null
+            })
 
-    for (const tableName of tablesToMigrate) {
-      try {
-        console.log(`Starting migration for table: ${tableName}`)
-        
-        // Update migration status
-        await supabaseClient
-          .from('migration_status')
-          .upsert({
-            table_name: tableName,
-            status: 'running',
-            started_at: new Date().toISOString()
+          results.push({
+            table: tableResult.table,
+            status: tableResult.status,
+            records_analyzed: tableResult.total_records || 0,
+            proxy_response: true
           })
 
-        // Get table schema from legacy database
-        const schemaResult = await legacyClient.queryObject(`
-          SELECT column_name, data_type, is_nullable, column_default
-          FROM information_schema.columns 
-          WHERE table_name = $1 
-          ORDER BY ordinal_position
-        `, [tableName])
+          console.log(`Updated status for ${tableResult.table}: ${tableResult.status}`)
 
-        console.log(`Schema for ${tableName}:`, schemaResult.rows)
-
-        // Create PCRM table in Supabase
-        const pcrm_table_name = `${tableName}_pcrm`
-        await createPCRMTable(supabaseClient, pcrm_table_name, schemaResult.rows)
-
-        // Get total record count
-        const countResult = await legacyClient.queryObject(`SELECT COUNT(*) as count FROM ${tableName}`)
-        const totalRecords = Number(countResult.rows[0]?.count || 0)
-
-        // Update total records
-        await supabaseClient
-          .from('migration_status')
-          .update({ 
-            total_records: totalRecords 
-          })
-          .eq('table_name', tableName)
-
-        console.log(`Total records to migrate for ${tableName}: ${totalRecords}`)
-
-        // Migrate data in batches
-        let migratedCount = 0
-        const actualBatchSize = batchSize || 1000
-        
-        for (let offset = 0; offset < totalRecords; offset += actualBatchSize) {
-          const dataResult = await legacyClient.queryObject(`
-            SELECT * FROM ${tableName} 
-            ORDER BY 1 
-            LIMIT ${actualBatchSize} OFFSET ${offset}
-          `)
-
-          if (dataResult.rows.length > 0) {
-            // Transform data for PCRM table
-            const transformedData = dataResult.rows.map((row: any) => ({
-              ...row,
-              legacy_id: String(row.id || row.uuid || offset + dataResult.rows.indexOf(row)),
-              migrated_at: new Date().toISOString(),
-              migration_source: 'legacy_admin'
-            }))
-
-            // Insert into PCRM table
-            const { error } = await supabaseClient
-              .from(pcrm_table_name)
-              .insert(transformedData)
-
-            if (error) {
-              console.error(`Error inserting batch for ${tableName}:`, error)
-              throw error
-            }
-
-            migratedCount += dataResult.rows.length
-            
-            // Update progress
-            await supabaseClient
-              .from('migration_status')
-              .update({ 
-                migrated_records: migratedCount 
-              })
-              .eq('table_name', tableName)
-
-            console.log(`Migrated ${migratedCount}/${totalRecords} records for ${tableName}`)
-          }
-        }
-
-        // Mark as completed
-        await supabaseClient
-          .from('migration_status')
-          .update({
-            status: 'completed',
-            completed_at: new Date().toISOString(),
-            migrated_records: migratedCount
-          })
-          .eq('table_name', tableName)
-
-        results.push({
-          table: tableName,
-          status: 'completed',
-          records_migrated: migratedCount
-        })
-
-        console.log(`Completed migration for ${tableName}: ${migratedCount} records`)
-
-      } catch (error) {
-        console.error(`Error migrating table ${tableName}:`, error)
-        
-        await supabaseClient
-          .from('migration_status')
-          .update({
+        } catch (error) {
+          console.error(`Error updating status for ${tableResult.table}:`, error)
+          results.push({
+            table: tableResult.table,
             status: 'failed',
-            error_message: error.message,
-            completed_at: new Date().toISOString()
+            error: error.message
           })
-          .eq('table_name', tableName)
-
-        results.push({
-          table: tableName,
-          status: 'failed',
-          error: error.message
-        })
+        }
       }
     }
-
-    await legacyClient.end()
-    console.log('✅ Migration completed')
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Migration completed',
-        results 
+        message: 'Migration analysis completed via proxy service',
+        results,
+        proxy_used: true
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -198,7 +118,12 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message 
+        error: error.message,
+        recommendations: [
+          'Ensure the proxy service is deployed and running',
+          'Verify PROXY_SERVICE_URL environment variable is set',
+          'Check network connectivity between services'
+        ]
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -207,88 +132,3 @@ serve(async (req) => {
     )
   }
 })
-
-async function createPCRMTable(supabaseClient: any, tableName: string, columns: any[]) {
-  // Check if table already exists
-  const { data: existingTables } = await supabaseClient
-    .from('information_schema.tables')
-    .select('table_name')
-    .eq('table_name', tableName)
-
-  if (existingTables && existingTables.length > 0) {
-    console.log(`Table ${tableName} already exists, skipping creation`)
-    return
-  }
-
-  // Build CREATE TABLE statement
-  const columnDefinitions = columns.map((col: any) => {
-    let definition = `${col.column_name} `
-    
-    // Map PostgreSQL types
-    switch (col.data_type.toLowerCase()) {
-      case 'integer':
-      case 'bigint':
-        definition += 'INTEGER'
-        break
-      case 'character varying':
-      case 'varchar':
-      case 'text':
-        definition += 'TEXT'
-        break
-      case 'timestamp without time zone':
-      case 'timestamp with time zone':
-        definition += 'TIMESTAMP WITH TIME ZONE'
-        break
-      case 'date':
-        definition += 'DATE'
-        break
-      case 'boolean':
-        definition += 'BOOLEAN'
-        break
-      case 'numeric':
-      case 'decimal':
-        definition += 'NUMERIC'
-        break
-      case 'uuid':
-        definition += 'UUID'
-        break
-      default:
-        definition += 'TEXT'
-    }
-    
-    if (col.is_nullable === 'NO') {
-      definition += ' NOT NULL'
-    }
-    
-    return definition
-  }).join(', ')
-
-  const createTableSQL = `
-    CREATE TABLE public.${tableName} (
-      id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-      legacy_id TEXT NOT NULL UNIQUE,
-      ${columnDefinitions},
-      migrated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-      migration_source TEXT DEFAULT 'legacy_admin'
-    );
-    
-    ALTER TABLE public.${tableName} ENABLE ROW LEVEL SECURITY;
-    
-    CREATE POLICY "Allow all operations on ${tableName}" 
-      ON public.${tableName} 
-      FOR ALL 
-      USING (true);
-  `
-
-  console.log(`Creating table ${tableName} with SQL:`, createTableSQL)
-  
-  // Execute the SQL using rpc (this is a special case for DDL)
-  const { error } = await supabaseClient.rpc('exec_sql', { sql: createTableSQL })
-  
-  if (error) {
-    console.error(`Error creating table ${tableName}:`, error)
-    throw error
-  }
-  
-  console.log(`Successfully created table: ${tableName}`)
-}
