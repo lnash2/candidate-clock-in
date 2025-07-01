@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,6 +9,7 @@ import { ConnectionTestCard } from './components/ConnectionTestCard';
 import { MigrationSettingsCard } from './components/MigrationSettingsCard';
 import { MigrationStatusList } from './components/MigrationStatusList';
 import { LiveSyncCard } from './components/LiveSyncCard';
+import { ConnectionDiagnostics } from './components/ConnectionDiagnostics';
 
 const MigrationDashboard = () => {
   const [migrationStatus, setMigrationStatus] = useState<MigrationStatus[]>([]);
@@ -46,12 +46,17 @@ const MigrationDashboard = () => {
         <h1 className="text-2xl font-bold">Legacy Data Migration Dashboard</h1>
       </div>
 
-      <Tabs defaultValue="migrate" className="space-y-4">
+      <Tabs defaultValue="diagnostics" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="diagnostics">Connection Diagnostics</TabsTrigger>
           <TabsTrigger value="migrate">Start Migration</TabsTrigger>
           <TabsTrigger value="status">Migration Status</TabsTrigger>
           <TabsTrigger value="sync">Live Sync</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="diagnostics" className="space-y-4">
+          <ConnectionDiagnostics />
+        </TabsContent>
 
         <TabsContent value="migrate" className="space-y-4">
           <ConnectionTestCard
