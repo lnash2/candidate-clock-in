@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -87,25 +86,46 @@ const MigrationDashboard = () => {
     setIsTestingConnection(true);
     
     try {
+      console.log('🔍 Testing connection with config:', {
+        host: dbConfig.host,
+        port: dbConfig.port,
+        username: dbConfig.username,
+        database: dbConfig.database,
+        sslMode: dbConfig.sslMode
+      });
+
       const response = await supabase.functions.invoke('test-legacy-connection', {
         body: { config: dbConfig }
       });
 
-      if (response.error) throw response.error;
+      console.log('📋 Connection test response:', response);
+
+      if (response.error) {
+        console.error('❌ Function invocation error:', response.error);
+        throw response.error;
+      }
 
       if (response.data?.success) {
         toast({
-          title: 'Success',
-          description: 'Database connection successful!',
+          title: 'Success! 🎉',
+          description: `Database connection successful! Strategy: ${response.data.strategy}. Found ${response.data.table_count} tables.`,
         });
+        console.log('✅ Connection successful with strategy:', response.data.strategy);
       } else {
-        throw new Error(response.data?.error || 'Connection failed');
+        console.error('❌ Connection failed with errors:', response.data);
+        throw new Error(response.data?.error || 'Connection failed with unknown error');
       }
     } catch (error) {
-      console.error('Connection test error:', error);
+      console.error('🚨 Connection test error:', error);
+      
+      let errorMessage = 'Failed to connect to database';
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: 'Connection Failed',
-        description: error.message || 'Failed to connect to database',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
@@ -235,6 +255,11 @@ const MigrationDashboard = () => {
               <CardTitle>Database Connection Configuration</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-800">
+                <strong>🔧 Using Enhanced SSL Connection Strategy</strong><br/>
+                This configuration now uses multiple SSL bypass strategies to handle expired certificates while maintaining security requirements.
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="host">Database Host</Label>
@@ -297,7 +322,12 @@ const MigrationDashboard = () => {
                   checked={dbConfig.sslMode}
                   onCheckedChange={(checked) => setDbConfig({...dbConfig, sslMode: checked})}
                 />
-                <Label htmlFor="ssl">Enable SSL/TLS (Recommended)</Label>
+                <Label htmlFor="ssl">Enable SSL/TLS (Required for RDS)</Label>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
+                <strong>⚠️ SSL Certificate Notice:</strong><br/>
+                If you're connecting to RDS with expired SSL certificates, our connection strategy will automatically bypass certificate validation while maintaining encrypted connections.
               </div>
 
               <Button
@@ -309,7 +339,7 @@ const MigrationDashboard = () => {
                 {isTestingConnection ? (
                   <>
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Testing Connection...
+                    Testing Connection with Enhanced SSL Strategy...
                   </>
                 ) : (
                   <>
