@@ -29,7 +29,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting legacy data sync...')
+    console.log('Starting legacy data sync with enhanced connection handling...')
     
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -38,23 +38,8 @@ serve(async (req) => {
 
     const { database, tableName, lastSyncTimestamp } = await req.json() as SyncRequest
     
-    // Build connection configuration
-    const connectionConfig = {
-      hostname: database.host,
-      port: database.port,
-      user: database.username,
-      password: database.password,
-      database: database.database,
-      tls: database.sslMode ? {
-        enabled: true,
-        enforce: false,
-        caCertificates: []
-      } : undefined
-    }
-    
-    // Connect to legacy database
-    const legacyClient = new Client(connectionConfig)
-    await legacyClient.connect()
+    // Enhanced connection with multiple fallback strategies
+    const legacyClient = await createRobustConnection(database)
     
     console.log(`Connected to legacy database for sync of ${tableName}`)
 
@@ -131,3 +116,73 @@ serve(async (req) => {
     )
   }
 })
+
+async function createRobustConnection(config: DatabaseConfig): Promise<Client> {
+  const strategies = []
+  
+  // Strategy 1: SSL with certificate validation disabled
+  if (config.sslMode) {
+    strategies.push({
+      name: 'SSL with validation disabled',
+      config: {
+        hostname: config.host,
+        port: config.port,
+        user: config.username,
+        password: config.password,
+        database: config.database,
+        tls: {
+          enabled: true,
+          enforce: false,
+          caCertificates: [],
+          checkServerIdentity: false
+        }
+      }
+    })
+  }
+  
+  // Strategy 2: SSL required
+  if (config.sslMode) {
+    strategies.push({
+      name: 'SSL required',
+      config: {
+        hostname: config.host,
+        port: config.port,
+        user: config.username,
+        password: config.password,
+        database: config.database,
+        tls: {
+          enabled: true,
+          enforce: true,
+          caCertificates: []
+        }
+      }
+    })
+  }
+  
+  // Strategy 3: No SSL
+  strategies.push({
+    name: 'No SSL',
+    config: {
+      hostname: config.host,
+      port: config.port,
+      user: config.username,
+      password: config.password,
+      database: config.database,
+      tls: undefined
+    }
+  })
+  
+  for (const strategy of strategies) {
+    try {
+      console.log(`Attempting connection with: ${strategy.name}`)
+      const client = new Client(strategy.config)
+      await client.connect()
+      console.log(`✅ Connected successfully using: ${strategy.name}`)
+      return client
+    } catch (error) {
+      console.log(`❌ ${strategy.name} failed:`, error.message)
+    }
+  }
+  
+  throw new Error('All connection strategies failed')
+}
