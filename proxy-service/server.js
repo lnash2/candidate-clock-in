@@ -12,13 +12,15 @@ const debugRoutes = require('./routes/debug');
 
 const app = express();
 
-// Railway-specific port handling
-const port = process.env.PORT || process.env.RAILWAY_PORT || 3001;
+// Railway-specific port handling - MUST bind to 0.0.0.0
+const port = process.env.PORT || 3001;
+const host = '0.0.0.0'; // Critical for Railway deployment
 
-console.log(`\n🚀 PCRM Proxy Service initializing...`);
+console.log(`\n🚀 PCRM Proxy Service v2.0 initializing...`);
 console.log(`📊 Node.js version: ${process.version}`);
 console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-console.log(`🚢 Railway detected: ${process.env.RAILWAY_ENVIRONMENT ? 'Yes' : 'No'}`);
+console.log(`🚢 Railway deployment detected: ${process.env.RAILWAY_ENVIRONMENT ? 'Yes' : 'No'}`);
+console.log(`📡 Target host: ${host}`);
 console.log(`📡 Target port: ${port}`);
 console.log(`⏰ Startup time: ${new Date().toISOString()}`);
 
@@ -100,18 +102,20 @@ app.use((req, res, next) => {
 app.get('/', (req, res) => {
   const serverInfo = {
     status: 'healthy',
-    message: 'PCRM Proxy Service is running',
+    message: 'PCRM Proxy Service v2.0 is running',
     timestamp: new Date().toISOString(),
+    version: '2.0.0',
     cors_enabled: true,
     allowed_origins_count: corsOptions.origin.length,
     environment: process.env.NODE_ENV || 'development',
     railway_environment: process.env.RAILWAY_ENVIRONMENT || 'none',
+    host: host,
     port: port,
     uptime: process.uptime(),
     available_routes: ['/health', '/debug', '/test-connection', '/migrate-data', '/sync-data']
   };
   
-  console.log('🏠 Root health check accessed:', serverInfo);
+  console.log('🏠 Root health check accessed (v2.0):', serverInfo);
   res.json(serverInfo);
 });
 
@@ -131,7 +135,8 @@ app.use((error, req, res, next) => {
     error: error.message,
     timestamp: new Date().toISOString(),
     endpoint: req.url,
-    method: req.method
+    method: req.method,
+    version: '2.0.0'
   });
 });
 
@@ -142,26 +147,32 @@ app.use('*', (req, res) => {
     success: false,
     error: 'Route not found',
     requested_route: req.originalUrl,
-    available_routes: ['/health', '/debug', '/test-connection', '/migrate-data', '/sync-data']
+    available_routes: ['/health', '/debug', '/test-connection', '/migrate-data', '/sync-data'],
+    version: '2.0.0'
   });
 });
 
-// Start server with better error handling
-const server = app.listen(port, '0.0.0.0', (err) => {
+// Start server with Railway-specific configuration
+const server = app.listen(port, host, (err) => {
   if (err) {
     console.error('❌ Failed to start server:', err);
     process.exit(1);
   }
   
-  console.log(`\n✅ PCRM Proxy Service successfully started!`);
-  console.log(`📡 Listening on: 0.0.0.0:${port}`);
+  console.log(`\n✅ PCRM Proxy Service v2.0 successfully started!`);
+  console.log(`📡 Listening on: ${host}:${port}`);
   console.log(`🌐 CORS origins: ${corsOptions.origin.length} configured`);
   console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🚢 Railway environment: ${process.env.RAILWAY_ENVIRONMENT || 'none'}`);
   console.log(`🔗 Public URL: https://candidate-clock-in-production.up.railway.app`);
   console.log(`❤️ Health check: https://candidate-clock-in-production.up.railway.app/`);
   console.log(`🔍 Debug endpoint: https://candidate-clock-in-production.up.railway.app/debug`);
-  console.log(`⚡ Server ready to accept connections`);
+  console.log(`⚡ Server ready to accept connections on ${host}:${port}`);
+  
+  // Additional Railway-specific logging
+  if (process.env.RAILWAY_ENVIRONMENT) {
+    console.log(`🚂 Railway deployment successful - service is publicly accessible`);
+  }
 });
 
 // Enhanced graceful shutdown
@@ -196,4 +207,3 @@ process.on('uncaughtException', (error) => {
   console.error('🚨 Stack:', error.stack);
   process.exit(1);
 });
-

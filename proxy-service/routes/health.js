@@ -6,6 +6,7 @@ router.get('/', (req, res) => {
   const healthInfo = {
     status: 'ok',
     service: 'PCRM Proxy Service',
+    version: '2.0.0',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     memory: process.memoryUsage(),
@@ -13,6 +14,8 @@ router.get('/', (req, res) => {
     railway_environment: process.env.RAILWAY_ENVIRONMENT || 'none',
     node_version: process.version,
     cors_enabled: true,
+    host_binding: '0.0.0.0',
+    port: process.env.PORT || 3001,
     endpoints: {
       root: '/',
       health: '/health',
@@ -23,14 +26,14 @@ router.get('/', (req, res) => {
     }
   };
 
-  console.log('❤️ Health check endpoint accessed:', {
+  console.log('❤️ Health check endpoint accessed (v2.0):', {
     timestamp: healthInfo.timestamp,
     uptime: healthInfo.uptime,
-    memory_usage: `${Math.round(healthInfo.memory.heapUsed / 1024 / 1024)}MB`
+    memory_usage: `${Math.round(healthInfo.memory.heapUsed / 1024 / 1024)}MB`,
+    version: healthInfo.version
   });
 
   res.json(healthInfo);
 });
 
 module.exports = router;
-
