@@ -11,7 +11,28 @@ const syncDataRoutes = require('./routes/syncData');
 const debugRoutes = require('./routes/debug');
 
 const app = express();
-const port = process.env.PORT || 3001;
+
+// Railway-specific port handling
+const port = process.env.PORT || process.env.RAILWAY_PORT || 3001;
+
+console.log(`\n🚀 PCRM Proxy Service initializing...`);
+console.log(`📊 Node.js version: ${process.version}`);
+console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+console.log(`🚢 Railway detected: ${process.env.RAILWAY_ENVIRONMENT ? 'Yes' : 'No'}`);
+console.log(`📡 Target port: ${port}`);
+console.log(`⏰ Startup time: ${new Date().toISOString()}`);
+
+// Validate critical dependencies
+try {
+  console.log('🔍 Validating dependencies...');
+  require('express');
+  require('cors');
+  require('pg');
+  console.log('✅ All dependencies loaded successfully');
+} catch (error) {
+  console.error('❌ Critical dependency missing:', error.message);
+  process.exit(1);
+}
 
 // Enhanced request logging middleware
 app.use((req, res, next) => {
@@ -75,19 +96,22 @@ app.use((req, res, next) => {
   next();
 });
 
-// Root endpoint with enhanced info
+// Railway health check endpoint (must be first)
 app.get('/', (req, res) => {
   const serverInfo = {
+    status: 'healthy',
     message: 'PCRM Proxy Service is running',
     timestamp: new Date().toISOString(),
     cors_enabled: true,
     allowed_origins_count: corsOptions.origin.length,
     environment: process.env.NODE_ENV || 'development',
+    railway_environment: process.env.RAILWAY_ENVIRONMENT || 'none',
     port: port,
+    uptime: process.uptime(),
     available_routes: ['/health', '/debug', '/test-connection', '/migrate-data', '/sync-data']
   };
   
-  console.log('🏠 Root endpoint accessed:', serverInfo);
+  console.log('🏠 Root health check accessed:', serverInfo);
   res.json(serverInfo);
 });
 
@@ -122,23 +146,54 @@ app.use('*', (req, res) => {
   });
 });
 
-app.listen(port, '0.0.0.0', () => {
-  console.log(`\n🚀 PCRM Proxy Service starting...`);
-  console.log(`📡 Port: ${port}`);
+// Start server with better error handling
+const server = app.listen(port, '0.0.0.0', (err) => {
+  if (err) {
+    console.error('❌ Failed to start server:', err);
+    process.exit(1);
+  }
+  
+  console.log(`\n✅ PCRM Proxy Service successfully started!`);
+  console.log(`📡 Listening on: 0.0.0.0:${port}`);
   console.log(`🌐 CORS origins: ${corsOptions.origin.length} configured`);
   console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`✅ Service ready at: https://candidate-clock-in-production.up.railway.app`);
-  console.log(`📋 Health check: https://candidate-clock-in-production.up.railway.app/health`);
+  console.log(`🚢 Railway environment: ${process.env.RAILWAY_ENVIRONMENT || 'none'}`);
+  console.log(`🔗 Public URL: https://candidate-clock-in-production.up.railway.app`);
+  console.log(`❤️ Health check: https://candidate-clock-in-production.up.railway.app/`);
   console.log(`🔍 Debug endpoint: https://candidate-clock-in-production.up.railway.app/debug`);
+  console.log(`⚡ Server ready to accept connections`);
 });
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('🛑 Shutting down gracefully...');
-  process.exit(0);
+// Enhanced graceful shutdown
+const gracefulShutdown = (signal) => {
+  console.log(`\n🛑 Received ${signal}, shutting down gracefully...`);
+  server.close((err) => {
+    if (err) {
+      console.error('❌ Error during server shutdown:', err);
+      process.exit(1);
+    }
+    console.log('✅ Server closed successfully');
+    process.exit(0);
+  });
+  
+  // Force shutdown after 10 seconds
+  setTimeout(() => {
+    console.log('⚠️ Forcing shutdown after timeout');
+    process.exit(1);
+  }, 10000);
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Unhandled error logging
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('🚨 Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-process.on('SIGINT', () => {
-  console.log('🛑 Received SIGINT, shutting down gracefully...');
-  process.exit(0);
+process.on('uncaughtException', (error) => {
+  console.error('🚨 Uncaught Exception:', error);
+  console.error('🚨 Stack:', error.stack);
+  process.exit(1);
 });
+
