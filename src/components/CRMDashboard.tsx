@@ -11,6 +11,7 @@ import CommunicationTracking from '@/components/crm/CommunicationTracking';
 import RateManagement from '@/components/crm/RateManagement';
 import Settings from '@/components/crm/Settings';
 import DatabaseSetup from '@/components/setup/DatabaseSetup';
+import MigrationDashboard from '@/components/migration/MigrationDashboard';
 
 const CRMDashboard = () => {
   const [activeView, setActiveView] = useState('overview');
@@ -35,6 +36,8 @@ const CRMDashboard = () => {
         return <Settings />;
       case 'setup':
         return <DatabaseSetup />;
+      case 'migration':
+        return <MigrationDashboard />;
       default:
         return <CRMOverview />;
     }

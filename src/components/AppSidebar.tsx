@@ -56,6 +56,11 @@ const systemItems = [
     id: "setup",
   },
   {
+    title: "Data Migration",
+    icon: Database,
+    id: "migration",
+  },
+  {
     title: "Settings",
     icon: Settings,
     id: "settings",
