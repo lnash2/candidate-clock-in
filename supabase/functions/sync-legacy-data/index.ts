@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { Client } from "https://deno.land/x/postgres@v0.17.0/mod.ts"
@@ -29,7 +28,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting legacy data sync with enhanced connection handling...')
+    console.log('Starting legacy data sync with advanced SSL certificate bypass...')
     
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -38,10 +37,10 @@ serve(async (req) => {
 
     const { database, tableName, lastSyncTimestamp } = await req.json() as SyncRequest
     
-    // Enhanced connection with multiple fallback strategies
-    const legacyClient = await createRobustConnection(database)
+    // Advanced connection with aggressive SSL bypass
+    const legacyClient = await createAdvancedRobustConnection(database)
     
-    console.log(`Connected to legacy database for sync of ${tableName}`)
+    console.log(`Connected to legacy database for sync of ${tableName} with SSL bypass`)
 
     const pcrm_table_name = `${tableName}_pcrm`
 
@@ -117,13 +116,34 @@ serve(async (req) => {
   }
 })
 
-async function createRobustConnection(config: DatabaseConfig): Promise<Client> {
+async function createAdvancedRobustConnection(config: DatabaseConfig): Promise<Client> {
   const strategies = []
   
-  // Strategy 1: SSL with certificate validation disabled
+  // Strategy 1: Force SSL with complete certificate bypass
   if (config.sslMode) {
     strategies.push({
-      name: 'SSL with validation disabled',
+      name: 'Force SSL with complete certificate bypass',
+      config: {
+        hostname: config.host,
+        port: config.port,
+        user: config.username,
+        password: config.password,
+        database: config.database,
+        tls: {
+          enabled: true,
+          enforce: true,
+          caCertificates: [],
+          checkServerIdentity: () => undefined,
+          rejectUnauthorized: false
+        }
+      }
+    })
+  }
+  
+  // Strategy 2: SSL prefer with aggressive bypass
+  if (config.sslMode) {
+    strategies.push({
+      name: 'SSL prefer with aggressive bypass',
       config: {
         hostname: config.host,
         port: config.port,
@@ -134,16 +154,19 @@ async function createRobustConnection(config: DatabaseConfig): Promise<Client> {
           enabled: true,
           enforce: false,
           caCertificates: [],
-          checkServerIdentity: false
+          checkServerIdentity: () => undefined,
+          rejectUnauthorized: false,
+          requestCert: false,
+          agent: false
         }
       }
     })
   }
   
-  // Strategy 2: SSL required
+  // Strategy 3: Direct TLS bypass
   if (config.sslMode) {
     strategies.push({
-      name: 'SSL required',
+      name: 'Direct TLS bypass',
       config: {
         hostname: config.host,
         port: config.port,
@@ -153,24 +176,18 @@ async function createRobustConnection(config: DatabaseConfig): Promise<Client> {
         tls: {
           enabled: true,
           enforce: true,
-          caCertificates: []
+          caCertificates: [],
+          cert: '',
+          key: '',
+          servername: '',
+          checkServerIdentity: () => undefined,
+          rejectUnauthorized: false,
+          requestCert: false,
+          agent: false
         }
       }
     })
   }
-  
-  // Strategy 3: No SSL
-  strategies.push({
-    name: 'No SSL',
-    config: {
-      hostname: config.host,
-      port: config.port,
-      user: config.username,
-      password: config.password,
-      database: config.database,
-      tls: undefined
-    }
-  })
   
   for (const strategy of strategies) {
     try {
@@ -184,5 +201,5 @@ async function createRobustConnection(config: DatabaseConfig): Promise<Client> {
     }
   }
   
-  throw new Error('All connection strategies failed')
+  throw new Error('All advanced SSL bypass strategies failed - certificate cannot be bypassed')
 }

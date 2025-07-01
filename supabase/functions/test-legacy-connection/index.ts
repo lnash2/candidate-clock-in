@@ -29,7 +29,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Testing legacy database connection with enhanced SSL handling...')
+    console.log('Testing legacy database connection with advanced SSL certificate bypass...')
     
     const { config } = await req.json() as { config: DatabaseConfig }
     
@@ -39,11 +39,53 @@ serve(async (req) => {
     let successfulClient: Client | null = null
     let finalResult: any = null
 
-    // Connection strategy 1: SSL with certificate validation disabled
+    // Strategy 1: Force SSL with complete certificate bypass using connection parameters
     if (config.sslMode) {
       try {
-        console.log('Attempt 1: SSL with certificate validation disabled')
+        console.log('Attempt 1: Force SSL with complete certificate bypass')
+        
+        // Use connection string approach to force SSL parameters
+        const connectionString = `postgres://${config.username}:${config.password}@${config.host}:${config.port}/${config.database}?sslmode=require&sslcert=&sslkey=&sslrootcert=`
+        
         const sslConfig = {
+          connection: connectionString,
+          tls: {
+            enabled: true,
+            enforce: true,
+            caCertificates: [],
+            // Complete certificate bypass
+            checkServerIdentity: () => undefined,
+            rejectUnauthorized: false
+          }
+        }
+        
+        const client = new Client(sslConfig)
+        await client.connect()
+        
+        console.log('✅ SSL connection successful with certificate bypass')
+        successfulClient = client
+        attempts.push({
+          method: 'Force SSL with certificate bypass',
+          success: true,
+          details: 'Connected with SSL but bypassed all certificate validation'
+        })
+        
+      } catch (error) {
+        console.log('❌ Force SSL attempt failed:', error.message)
+        attempts.push({
+          method: 'Force SSL with certificate bypass',
+          success: false,
+          error: error.message
+        })
+      }
+    }
+
+    // Strategy 2: SSL prefer mode with certificate bypass (if first attempt failed)
+    if (!successfulClient && config.sslMode) {
+      try {
+        console.log('Attempt 2: SSL prefer mode with certificate bypass')
+        
+        const sslPreferConfig = {
           hostname: config.host,
           port: config.port,
           user: config.username,
@@ -53,37 +95,44 @@ serve(async (req) => {
             enabled: true,
             enforce: false,
             caCertificates: [],
-            // Disable certificate validation to handle expired certificates
-            checkServerIdentity: false
+            // Advanced certificate bypass
+            checkServerIdentity: () => undefined,
+            rejectUnauthorized: false,
+            // Force acceptance of any certificate
+            secureContext: {
+              rejectUnauthorized: false,
+              checkServerIdentity: false
+            }
           }
         }
         
-        const client = new Client(sslConfig)
+        const client = new Client(sslPreferConfig)
         await client.connect()
         
-        console.log('SSL connection successful (validation disabled)')
+        console.log('✅ SSL prefer connection successful')
         successfulClient = client
         attempts.push({
-          method: 'SSL with validation disabled',
+          method: 'SSL prefer with certificate bypass',
           success: true,
-          details: 'Connected with SSL but certificate validation was bypassed'
+          details: 'Connected with SSL prefer mode and certificate bypass'
         })
         
       } catch (error) {
-        console.log('SSL attempt 1 failed:', error.message)
+        console.log('❌ SSL prefer attempt failed:', error.message)
         attempts.push({
-          method: 'SSL with validation disabled',
+          method: 'SSL prefer with certificate bypass',
           success: false,
           error: error.message
         })
       }
     }
 
-    // Connection strategy 2: SSL required mode (if first attempt failed)
+    // Strategy 3: Direct TLS socket approach (most aggressive bypass)
     if (!successfulClient && config.sslMode) {
       try {
-        console.log('Attempt 2: SSL required mode')
-        const sslRequiredConfig = {
+        console.log('Attempt 3: Direct TLS with aggressive certificate bypass')
+        
+        const aggressiveConfig = {
           hostname: config.host,
           port: config.port,
           user: config.username,
@@ -92,59 +141,34 @@ serve(async (req) => {
           tls: {
             enabled: true,
             enforce: true,
-            caCertificates: []
+            // Most aggressive certificate bypass
+            caCertificates: [],
+            cert: '',
+            key: '',
+            // Override all validation
+            servername: '',
+            checkServerIdentity: () => undefined,
+            rejectUnauthorized: false,
+            requestCert: false,
+            agent: false
           }
         }
         
-        const client = new Client(sslRequiredConfig)
+        const client = new Client(aggressiveConfig)
         await client.connect()
         
-        console.log('SSL required connection successful')
+        console.log('✅ Aggressive SSL bypass successful')
         successfulClient = client
         attempts.push({
-          method: 'SSL required',
+          method: 'Aggressive SSL bypass',
           success: true,
-          details: 'Connected with SSL enforcement'
+          details: 'Connected with aggressive SSL certificate bypass'
         })
         
       } catch (error) {
-        console.log('SSL attempt 2 failed:', error.message)
+        console.log('❌ Aggressive SSL bypass failed:', error.message)
         attempts.push({
-          method: 'SSL required',
-          success: false,
-          error: error.message
-        })
-      }
-    }
-
-    // Connection strategy 3: No SSL (fallback)
-    if (!successfulClient) {
-      try {
-        console.log('Attempt 3: No SSL (fallback)')
-        const noSslConfig = {
-          hostname: config.host,
-          port: config.port,
-          user: config.username,
-          password: config.password,
-          database: config.database,
-          tls: undefined
-        }
-        
-        const client = new Client(noSslConfig)
-        await client.connect()
-        
-        console.log('Non-SSL connection successful')
-        successfulClient = client
-        attempts.push({
-          method: 'No SSL',
-          success: true,
-          details: 'Connected without SSL encryption'
-        })
-        
-      } catch (error) {
-        console.log('Non-SSL attempt failed:', error.message)
-        attempts.push({
-          method: 'No SSL',
+          method: 'Aggressive SSL bypass',
           success: false,
           error: error.message
         })
@@ -171,19 +195,19 @@ serve(async (req) => {
 
       finalResult = {
         success: true,
-        message: 'Connection successful',
+        message: 'Connection successful with advanced SSL bypass',
         database_version: result.rows[0]?.version,
         table_count: tableCount,
         connection_attempts: attempts,
         successful_method: attempts.find(a => a.success)?.method,
-        ssl_recommendations: generateSSLRecommendations(attempts, config.sslMode)
+        ssl_recommendations: generateAdvancedSSLRecommendations(attempts, config.sslMode)
       }
     } else {
       finalResult = {
         success: false,
-        error: 'All connection attempts failed',
+        error: 'All advanced SSL bypass attempts failed',
         connection_attempts: attempts,
-        recommendations: generateFailureRecommendations(attempts)
+        recommendations: generateAdvancedFailureRecommendations(attempts)
       }
     }
 
@@ -202,10 +226,10 @@ serve(async (req) => {
         success: false, 
         error: error.message,
         recommendations: [
-          'Check your database host and port',
-          'Verify username and password',
-          'Ensure the database exists',
-          'Check firewall and network connectivity'
+          'RDS SSL certificate appears to be expired',
+          'Consider updating RDS SSL certificate in AWS Console',
+          'Temporarily modify pg_hba.conf to allow non-SSL connections',
+          'Check network connectivity and firewall rules'
         ]
       }),
       { 
@@ -216,54 +240,52 @@ serve(async (req) => {
   }
 })
 
-function generateSSLRecommendations(attempts: ConnectionAttempt[], sslRequested: boolean): string[] {
+function generateAdvancedSSLRecommendations(attempts: ConnectionAttempt[], sslRequested: boolean): string[] {
   const recommendations: string[] = []
   
   const sslSuccess = attempts.find(a => a.success && a.method.includes('SSL'))
-  const noSslSuccess = attempts.find(a => a.success && a.method === 'No SSL')
   
-  if (sslSuccess && sslSuccess.method.includes('validation disabled')) {
-    recommendations.push('⚠️ SSL certificate validation was bypassed - consider updating your RDS SSL certificate')
-    recommendations.push('📋 Your connection is encrypted but certificate validation is disabled')
-    recommendations.push('🔧 For production, update to a valid SSL certificate in AWS RDS')
+  if (sslSuccess) {
+    recommendations.push('✅ SSL connection established with certificate bypass')
+    recommendations.push('⚠️ Certificate validation was completely disabled')
+    recommendations.push('🔧 For production: Update RDS SSL certificate to restore proper validation')
+    recommendations.push('📋 Connection is encrypted but not authenticated due to certificate bypass')
   }
   
-  if (noSslSuccess && sslRequested) {
-    recommendations.push('⚠️ SSL was requested but fell back to unencrypted connection')
-    recommendations.push('🔒 Consider fixing SSL configuration for better security')
-  }
-  
-  if (sslSuccess && !sslSuccess.method.includes('validation disabled')) {
-    recommendations.push('✅ SSL connection is working properly with certificate validation')
+  if (!sslSuccess && sslRequested) {
+    recommendations.push('❌ All SSL bypass attempts failed')
+    recommendations.push('🔐 RDS SSL certificate appears to be expired and cannot be bypassed')
+    recommendations.push('🛠️ Consider updating RDS SSL certificate in AWS RDS Console')
+    recommendations.push('📝 Temporarily modify pg_hba.conf to allow non-SSL connections')
   }
   
   return recommendations
 }
 
-function generateFailureRecommendations(attempts: ConnectionAttempt[]): string[] {
+function generateAdvancedFailureRecommendations(attempts: ConnectionAttempt[]): string[] {
   const recommendations: string[] = []
   
   const hasSSLErrors = attempts.some(a => a.error?.includes('certificate') || a.error?.includes('SSL') || a.error?.includes('TLS'))
   const hasPgHbaErrors = attempts.some(a => a.error?.includes('pg_hba.conf') || a.error?.includes('no entry'))
-  const hasAuthErrors = attempts.some(a => a.error?.includes('authentication') || a.error?.includes('password'))
   
-  if (hasPgHbaErrors) {
-    recommendations.push('🔧 Update pg_hba.conf to allow connections from your IP address')
-    recommendations.push('📝 Add entry: host all all 0.0.0.0/0 md5 (or more restrictive IP range)')
+  if (hasSSLErrors && hasPgHbaErrors) {
+    recommendations.push('🔥 Critical Issue: SSL certificate expired AND pg_hba.conf blocks non-SSL')
+    recommendations.push('🎯 Solution 1: Update RDS SSL certificate in AWS Console')
+    recommendations.push('🎯 Solution 2: Temporarily modify pg_hba.conf to allow non-SSL connections')
+    recommendations.push('⚡ Quick fix: Add "host all all 0.0.0.0/0 md5" to pg_hba.conf')
   }
   
   if (hasSSLErrors) {
-    recommendations.push('🔐 Update your RDS SSL certificate - it appears to be expired')
-    recommendations.push('📋 In AWS RDS Console: Modify instance → Certificate Authority → Apply immediately')
+    recommendations.push('🔐 SSL certificate is expired or invalid')
+    recommendations.push('📋 In AWS RDS: Modify → Certificate Authority → rds-ca-2019 → Apply immediately')
   }
   
-  if (hasAuthErrors) {
-    recommendations.push('👤 Verify database username and password are correct')
-    recommendations.push('🔑 Check if the user has proper permissions')
+  if (hasPgHbaErrors) {
+    recommendations.push('🔧 pg_hba.conf only allows SSL connections')
+    recommendations.push('📝 Add non-SSL entry temporarily: host all all 0.0.0.0/0 md5')
   }
   
-  recommendations.push('🌐 Verify network connectivity and firewall rules')
-  recommendations.push('📍 Ensure the database host and port are correct')
+  recommendations.push('🌐 Verify network connectivity from Supabase Edge Functions')
   
   return recommendations
 }
