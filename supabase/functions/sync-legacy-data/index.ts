@@ -1,6 +1,5 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,10 +20,10 @@ serve(async (req) => {
   try {
     console.log('🔄 Starting legacy data sync via proxy service...')
     
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    )
+    // Log environment variables for debugging
+    console.log('📋 Environment check:')
+    console.log('- PROXY_SERVICE_URL:', Deno.env.get('PROXY_SERVICE_URL') ? 'SET' : 'NOT SET')
+    console.log('- PROXY_SERVICE_URL value:', Deno.env.get('PROXY_SERVICE_URL'))
 
     const { connectionString, tableName, lastSyncTimestamp } = await req.json() as SyncRequest
     
@@ -35,13 +34,19 @@ serve(async (req) => {
     // Get proxy service URL from environment
     const proxyServiceUrl = Deno.env.get('PROXY_SERVICE_URL')
     if (!proxyServiceUrl) {
+      console.error('❌ PROXY_SERVICE_URL environment variable is not set')
       throw new Error('PROXY_SERVICE_URL environment variable is required')
     }
 
     console.log(`📡 Calling proxy service for sync of ${tableName}...`)
 
+    // Ensure the URL has proper format
+    const fullProxyUrl = proxyServiceUrl.endsWith('/') 
+      ? `${proxyServiceUrl}sync-data` 
+      : `${proxyServiceUrl}/sync-data`
+
     // Call the proxy service for sync
-    const proxyResponse = await fetch(`${proxyServiceUrl}/sync-data`, {
+    const proxyResponse = await fetch(fullProxyUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -53,17 +58,23 @@ serve(async (req) => {
       })
     })
 
-    const proxyData = await proxyResponse.json()
+    let proxyData
+    try {
+      const responseText = await proxyResponse.text()
+      console.log('📥 Raw proxy response:', responseText)
+      proxyData = JSON.parse(responseText)
+    } catch (parseError) {
+      console.error('❌ Failed to parse proxy response:', parseError)
+      throw new Error('Invalid response from proxy service')
+    }
 
     if (!proxyResponse.ok) {
+      console.error('❌ Proxy service returned error:', proxyData)
       throw new Error(proxyData.error || 'Proxy service sync failed')
     }
 
     console.log(`✅ Sync completed via proxy service for ${tableName}`)
 
-    // Process the synced data (if needed, you can add logic here to 
-    // upsert the data into your Supabase tables)
-    
     return new Response(
       JSON.stringify({ 
         success: true, 
@@ -80,10 +91,13 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('🚨 Sync error:', error)
+    console.error('🚨 Error stack:', error.stack)
+    
     return new Response(
       JSON.stringify({ 
         success: false, 
         error: error.message,
+        error_details: error.stack,
         recommendations: [
           'Ensure the proxy service is deployed and running',
           'Verify PROXY_SERVICE_URL environment variable is set',
