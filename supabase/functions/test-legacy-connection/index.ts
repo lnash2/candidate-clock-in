@@ -6,12 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-interface PostgreSQLStartupMessage {
-  length: number;
-  protocolVersion: number;
-  parameters: Record<string, string>;
-}
-
 class CustomPostgreSQLClient {
   private conn: Deno.TlsConn | null = null;
   private encoder = new TextEncoder();
@@ -48,6 +42,7 @@ class CustomPostgreSQLClient {
       return true;
     } catch (error) {
       console.error('❌ Connection failed:', error);
+      await this.close();
       throw error;
     }
   }
@@ -100,8 +95,11 @@ class CustomPostgreSQLClient {
         await this.sendPasswordMessage(md5Password);
       } else if (authType === 3) { // Clear text password
         await this.sendPasswordMessage(password);
-      } else if (authType === 10) { // SASL authentication (SCRAM-SHA-256)
-        await this.handleSASLAuth(username, password);
+      } else if (authType === 0) { // Authentication successful
+        console.log('✅ Authentication successful (no password required)');
+        return;
+      } else {
+        throw new Error(`Unsupported authentication method: ${authType}`);
       }
 
       // Read authentication result
@@ -116,6 +114,9 @@ class CustomPostgreSQLClient {
       if (authStatus !== 0) {
         throw new Error(`Authentication failed with status: ${authStatus}`);
       }
+    } else if (messageType === 'E') {
+      const errorMsg = this.decoder.decode(response.slice(5));
+      throw new Error(`Authentication error: ${errorMsg}`);
     }
 
     // Skip remaining startup messages until ReadyForQuery
@@ -131,6 +132,7 @@ class CustomPostgreSQLClient {
         const errorMsg = this.decoder.decode(msg.slice(5));
         throw new Error(`PostgreSQL error: ${errorMsg}`);
       }
+      // Skip other message types (S, K, etc.)
     }
   }
 
@@ -149,146 +151,154 @@ class CustomPostgreSQLClient {
     console.log('📤 Password message sent');
   }
 
-  private async handleSASLAuth(username: string, password: string) {
-    // For SCRAM-SHA-256, we'll implement a basic version
-    // This is a simplified implementation
-    const mechanism = 'SCRAM-SHA-256';
-    const mechanismBytes = this.encoder.encode(mechanism + '\0\0\0\0');
-    const messageLength = 4 + mechanismBytes.length;
-    
-    const buffer = new ArrayBuffer(1 + 4 + mechanismBytes.length);
-    const view = new DataView(buffer);
-    
-    view.setUint8(0, 112); // 'p' message type
-    view.setUint32(1, messageLength, false);
-    new Uint8Array(buffer, 5).set(mechanismBytes);
-
-    await this.conn!.write(new Uint8Array(buffer));
-    console.log('📤 SASL initial response sent');
-  }
-
   private async md5Password(username: string, password: string, salt: Uint8Array): Promise<string> {
-    // Simplified MD5 implementation for PostgreSQL
-    // In a real implementation, you'd use a proper crypto library
-    const crypto = await import("https://deno.land/std@0.168.0/crypto/mod.ts");
-    const hasher = new crypto.crypto.subtle;
-    
+    // Create MD5 hash using Web Crypto API
     const step1 = password + username;
-    const hash1 = await hasher.digest('MD5', this.encoder.encode(step1));
-    const hex1 = Array.from(new Uint8Array(hash1)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const hash1Buffer = await crypto.subtle.digest('MD5', this.encoder.encode(step1));
+    const hash1Array = new Uint8Array(hash1Buffer);
+    const hex1 = Array.from(hash1Array).map(b => b.toString(16).padStart(2, '0')).join('');
     
     const step2 = hex1 + Array.from(salt).map(b => String.fromCharCode(b)).join('');
-    const hash2 = await hasher.digest('MD5', this.encoder.encode(step2));
-    const hex2 = Array.from(new Uint8Array(hash2)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const hash2Buffer = await crypto.subtle.digest('MD5', this.encoder.encode(step2));
+    const hash2Array = new Uint8Array(hash2Buffer);
+    const hex2 = Array.from(hash2Array).map(b => b.toString(16).padStart(2, '0')).join('');
     
     return 'md5' + hex2;
   }
 
   private async readMessage(): Promise<Uint8Array> {
-    // Read message type (1 byte)
-    const typeBuffer = new Uint8Array(1);
-    await this.conn!.read(typeBuffer);
-    
-    // Read message length (4 bytes)
-    const lengthBuffer = new Uint8Array(4);
-    await this.conn!.read(lengthBuffer);
-    const length = new DataView(lengthBuffer.buffer).getUint32(0, false);
-    
-    // Read message body
-    const bodyBuffer = new Uint8Array(length - 4);
-    await this.conn!.read(bodyBuffer);
-    
-    // Combine type + length + body
-    const fullMessage = new Uint8Array(1 + 4 + bodyBuffer.length);
-    fullMessage.set(typeBuffer, 0);
-    fullMessage.set(lengthBuffer, 1);
-    fullMessage.set(bodyBuffer, 5);
-    
-    return fullMessage;
+    try {
+      // Read message type (1 byte)
+      const typeBuffer = new Uint8Array(1);
+      const typeRead = await this.conn!.read(typeBuffer);
+      if (typeRead === null) {
+        throw new Error('Connection closed while reading message type');
+      }
+      
+      // Read message length (4 bytes)
+      const lengthBuffer = new Uint8Array(4);
+      const lengthRead = await this.conn!.read(lengthBuffer);
+      if (lengthRead === null) {
+        throw new Error('Connection closed while reading message length');
+      }
+      
+      const length = new DataView(lengthBuffer.buffer).getUint32(0, false);
+      
+      // Read message body (length - 4 bytes, since length includes itself)
+      const bodyBuffer = new Uint8Array(length - 4);
+      if (bodyBuffer.length > 0) {
+        const bodyRead = await this.conn!.read(bodyBuffer);
+        if (bodyRead === null) {
+          throw new Error('Connection closed while reading message body');
+        }
+      }
+      
+      // Combine type + length + body
+      const fullMessage = new Uint8Array(1 + 4 + bodyBuffer.length);
+      fullMessage.set(typeBuffer, 0);
+      fullMessage.set(lengthBuffer, 1);
+      fullMessage.set(bodyBuffer, 5);
+      
+      return fullMessage;
+    } catch (error) {
+      console.error('Error reading message:', error);
+      throw error;
+    }
   }
 
   async query(sql: string): Promise<any> {
     console.log(`🔍 Executing query: ${sql}`);
     
-    // Send simple query message
-    const queryBytes = this.encoder.encode(sql + '\0');
-    const messageLength = 4 + queryBytes.length;
-    
-    const buffer = new ArrayBuffer(1 + 4 + queryBytes.length);
-    const view = new DataView(buffer);
-    
-    view.setUint8(0, 81); // 'Q' message type
-    view.setUint32(1, messageLength, false);
-    new Uint8Array(buffer, 5).set(queryBytes);
+    try {
+      // Send simple query message
+      const queryBytes = this.encoder.encode(sql + '\0');
+      const messageLength = 4 + queryBytes.length;
+      
+      const buffer = new ArrayBuffer(1 + 4 + queryBytes.length);
+      const view = new DataView(buffer);
+      
+      view.setUint8(0, 81); // 'Q' message type
+      view.setUint32(1, messageLength, false);
+      new Uint8Array(buffer, 5).set(queryBytes);
 
-    await this.conn!.write(new Uint8Array(buffer));
-    
-    // Read response
-    const results = [];
-    let columns: string[] = [];
-    
-    while (true) {
-      const msg = await this.readMessage();
-      const msgType = String.fromCharCode(msg[0]);
+      await this.conn!.write(new Uint8Array(buffer));
       
-      console.log(`📥 Query response type: ${msgType}`);
+      // Read response
+      const results = [];
+      let columns: string[] = [];
       
-      if (msgType === 'T') { // RowDescription
-        const fieldCount = new DataView(msg.buffer, 5, 2).getUint16(0, false);
-        columns = [];
-        let offset = 7;
+      while (true) {
+        const msg = await this.readMessage();
+        const msgType = String.fromCharCode(msg[0]);
         
-        for (let i = 0; i < fieldCount; i++) {
-          const nameEnd = msg.indexOf(0, offset);
-          const fieldName = this.decoder.decode(msg.slice(offset, nameEnd));
-          columns.push(fieldName);
-          offset = nameEnd + 19; // Skip field info
-        }
-      } else if (msgType === 'D') { // DataRow
-        const fieldCount = new DataView(msg.buffer, 5, 2).getUint16(0, false);
-        const row: Record<string, any> = {};
-        let offset = 7;
+        console.log(`📥 Query response type: ${msgType}`);
         
-        for (let i = 0; i < fieldCount; i++) {
-          const fieldLength = new DataView(msg.buffer, offset, 4).getInt32(0, false);
-          offset += 4;
+        if (msgType === 'T') { // RowDescription
+          const fieldCount = new DataView(msg.buffer, 5, 2).getUint16(0, false);
+          columns = [];
+          let offset = 7;
           
-          if (fieldLength === -1) {
-            row[columns[i]] = null;
-          } else {
-            const fieldValue = this.decoder.decode(msg.slice(offset, offset + fieldLength));
-            row[columns[i]] = fieldValue;
-            offset += fieldLength;
+          for (let i = 0; i < fieldCount; i++) {
+            const nameEnd = msg.indexOf(0, offset);
+            const fieldName = this.decoder.decode(msg.slice(offset, nameEnd));
+            columns.push(fieldName);
+            offset = nameEnd + 19; // Skip field info (18 bytes + null terminator)
           }
+        } else if (msgType === 'D') { // DataRow
+          const fieldCount = new DataView(msg.buffer, 5, 2).getUint16(0, false);
+          const row: Record<string, any> = {};
+          let offset = 7;
+          
+          for (let i = 0; i < fieldCount; i++) {
+            const fieldLength = new DataView(msg.buffer, offset, 4).getInt32(0, false);
+            offset += 4;
+            
+            if (fieldLength === -1) {
+              row[columns[i]] = null;
+            } else {
+              const fieldValue = this.decoder.decode(msg.slice(offset, offset + fieldLength));
+              row[columns[i]] = fieldValue;
+              offset += fieldLength;
+            }
+          }
+          
+          results.push(row);
+        } else if (msgType === 'C') { // CommandComplete
+          console.log('✅ Command completed');
+        } else if (msgType === 'Z') { // ReadyForQuery
+          console.log('✅ Ready for next query');
+          break;
+        } else if (msgType === 'E') { // Error
+          const errorMsg = this.decoder.decode(msg.slice(5));
+          throw new Error(`Query error: ${errorMsg}`);
         }
-        
-        results.push(row);
-      } else if (msgType === 'C') { // CommandComplete
-        console.log('✅ Command completed');
-      } else if (msgType === 'Z') { // ReadyForQuery
-        console.log('✅ Ready for next query');
-        break;
-      } else if (msgType === 'E') { // Error
-        const errorMsg = this.decoder.decode(msg.slice(5));
-        throw new Error(`Query error: ${errorMsg}`);
       }
+      
+      return results;
+    } catch (error) {
+      console.error('Query execution error:', error);
+      throw error;
     }
-    
-    return results;
   }
 
   async close() {
     if (this.conn) {
-      // Send terminate message
-      const buffer = new ArrayBuffer(5);
-      const view = new DataView(buffer);
-      view.setUint8(0, 88); // 'X' message type
-      view.setUint32(1, 4, false);
-      
-      await this.conn.write(new Uint8Array(buffer));
-      this.conn.close();
-      this.conn = null;
-      console.log('✅ Connection closed');
+      try {
+        // Send terminate message
+        const buffer = new ArrayBuffer(5);
+        const view = new DataView(buffer);
+        view.setUint8(0, 88); // 'X' message type
+        view.setUint32(1, 4, false);
+        
+        await this.conn.write(new Uint8Array(buffer));
+        this.conn.close();
+        console.log('✅ Connection closed gracefully');
+      } catch (error) {
+        console.error('Error closing connection:', error);
+        this.conn.close();
+      } finally {
+        this.conn = null;
+      }
     }
   }
 }
