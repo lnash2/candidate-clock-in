@@ -8,8 +8,17 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+interface DatabaseConfig {
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+  database: string;
+  sslMode: boolean;
+}
+
 interface MigrationConfig {
-  legacyConnectionString: string;
+  database: DatabaseConfig;
   tables: string[];
   batchSize: number;
 }
@@ -29,8 +38,24 @@ serve(async (req) => {
 
     const { config } = await req.json() as { config: MigrationConfig }
     
+    // Build connection configuration
+    const connectionConfig = {
+      hostname: config.database.host,
+      port: config.database.port,
+      user: config.database.username,
+      password: config.database.password,
+      database: config.database.database,
+      tls: config.database.sslMode ? {
+        enabled: true,
+        enforce: false,
+        caCertificates: []
+      } : undefined
+    }
+    
+    console.log(`Connecting to: ${config.database.host}:${config.database.port}/${config.database.database} (SSL: ${config.database.sslMode})`)
+    
     // Connect to legacy database
-    const legacyClient = new Client(config.legacyConnectionString)
+    const legacyClient = new Client(connectionConfig)
     await legacyClient.connect()
     
     console.log('Connected to legacy database')

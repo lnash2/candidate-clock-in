@@ -8,8 +8,17 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+interface DatabaseConfig {
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+  database: string;
+  sslMode: boolean;
+}
+
 interface SyncRequest {
-  legacyConnectionString: string;
+  database: DatabaseConfig;
   tableName: string;
   lastSyncTimestamp?: string;
 }
@@ -27,10 +36,24 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     )
 
-    const { legacyConnectionString, tableName, lastSyncTimestamp } = await req.json() as SyncRequest
+    const { database, tableName, lastSyncTimestamp } = await req.json() as SyncRequest
+    
+    // Build connection configuration
+    const connectionConfig = {
+      hostname: database.host,
+      port: database.port,
+      user: database.username,
+      password: database.password,
+      database: database.database,
+      tls: database.sslMode ? {
+        enabled: true,
+        enforce: false,
+        caCertificates: []
+      } : undefined
+    }
     
     // Connect to legacy database
-    const legacyClient = new Client(legacyConnectionString)
+    const legacyClient = new Client(connectionConfig)
     await legacyClient.connect()
     
     console.log(`Connected to legacy database for sync of ${tableName}`)

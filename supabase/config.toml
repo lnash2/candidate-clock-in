@@ -41,6 +41,9 @@ verify_jwt = false
 [functions.sync-legacy-data]
 verify_jwt = false
 
+[functions.test-legacy-connection]
+verify_jwt = false
+
 [storage]
 enabled = true
 port = 54324

@@ -8,9 +8,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Database, Upload, RefreshCw, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Database, Upload, RefreshCw, CheckCircle, XCircle, Clock, TestTube } from 'lucide-react';
 
 interface MigrationStatus {
   id: string;
@@ -25,12 +26,29 @@ interface MigrationStatus {
   updated_at: string;
 }
 
+interface DatabaseConfig {
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+  database: string;
+  sslMode: boolean;
+}
+
 const MigrationDashboard = () => {
   const [migrationStatus, setMigrationStatus] = useState<MigrationStatus[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [legacyConnectionString, setLegacyConnectionString] = useState('');
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [tablesToMigrate, setTablesToMigrate] = useState('');
   const [batchSize, setBatchSize] = useState(1000);
+  const [dbConfig, setDbConfig] = useState<DatabaseConfig>({
+    host: '',
+    port: 5432,
+    username: '',
+    password: '',
+    database: '',
+    sslMode: true
+  });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -56,11 +74,50 @@ const MigrationDashboard = () => {
     }
   };
 
-  const startMigration = async () => {
-    if (!legacyConnectionString.trim()) {
+  const testConnection = async () => {
+    if (!dbConfig.host || !dbConfig.username || !dbConfig.password || !dbConfig.database) {
       toast({
         title: 'Error',
-        description: 'Please provide a legacy database connection string',
+        description: 'Please fill in all database connection fields',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsTestingConnection(true);
+    
+    try {
+      const response = await supabase.functions.invoke('test-legacy-connection', {
+        body: { config: dbConfig }
+      });
+
+      if (response.error) throw response.error;
+
+      if (response.data?.success) {
+        toast({
+          title: 'Success',
+          description: 'Database connection successful!',
+        });
+      } else {
+        throw new Error(response.data?.error || 'Connection failed');
+      }
+    } catch (error) {
+      console.error('Connection test error:', error);
+      toast({
+        title: 'Connection Failed',
+        description: error.message || 'Failed to connect to database',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
+
+  const startMigration = async () => {
+    if (!dbConfig.host || !dbConfig.username || !dbConfig.password || !dbConfig.database) {
+      toast({
+        title: 'Error',
+        description: 'Please fill in all database connection fields',
         variant: 'destructive',
       });
       return;
@@ -77,7 +134,7 @@ const MigrationDashboard = () => {
       const response = await supabase.functions.invoke('migrate-legacy-data', {
         body: {
           config: {
-            legacyConnectionString,
+            database: dbConfig,
             tables: tables.length > 0 ? tables : [],
             batchSize
           }
@@ -109,7 +166,7 @@ const MigrationDashboard = () => {
     try {
       const response = await supabase.functions.invoke('sync-legacy-data', {
         body: {
-          legacyConnectionString,
+          database: dbConfig,
           tableName
         }
       });
@@ -175,20 +232,100 @@ const MigrationDashboard = () => {
         <TabsContent value="migrate" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Configure Migration</CardTitle>
+              <CardTitle>Database Connection Configuration</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="host">Database Host</Label>
+                  <Input
+                    id="host"
+                    placeholder="your-database-host.com"
+                    value={dbConfig.host}
+                    onChange={(e) => setDbConfig({...dbConfig, host: e.target.value})}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="port">Port</Label>
+                  <Input
+                    id="port"
+                    type="number"
+                    placeholder="5432"
+                    value={dbConfig.port}
+                    onChange={(e) => setDbConfig({...dbConfig, port: Number(e.target.value)})}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="username">Username</Label>
+                  <Input
+                    id="username"
+                    placeholder="postgres"
+                    value={dbConfig.username}
+                    onChange={(e) => setDbConfig({...dbConfig, username: e.target.value})}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Enter password"
+                    value={dbConfig.password}
+                    onChange={(e) => setDbConfig({...dbConfig, password: e.target.value})}
+                  />
+                </div>
+              </div>
+
               <div>
-                <Label htmlFor="connection">Legacy Database Connection String</Label>
+                <Label htmlFor="database">Database Name</Label>
                 <Input
-                  id="connection"
-                  placeholder="postgresql://user:password@host:port/database"
-                  value={legacyConnectionString}
-                  onChange={(e) => setLegacyConnectionString(e.target.value)}
-                  type="password"
+                  id="database"
+                  placeholder="postgres"
+                  value={dbConfig.database}
+                  onChange={(e) => setDbConfig({...dbConfig, database: e.target.value})}
                 />
               </div>
-              
+
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="ssl"
+                  checked={dbConfig.sslMode}
+                  onCheckedChange={(checked) => setDbConfig({...dbConfig, sslMode: checked})}
+                />
+                <Label htmlFor="ssl">Enable SSL/TLS (Recommended)</Label>
+              </div>
+
+              <Button
+                onClick={testConnection}
+                disabled={isTestingConnection}
+                variant="outline"
+                className="w-full"
+              >
+                {isTestingConnection ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Testing Connection...
+                  </>
+                ) : (
+                  <>
+                    <TestTube className="mr-2 h-4 w-4" />
+                    Test Database Connection
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Migration Settings</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="tables">Tables to Migrate (optional - leave empty for all)</Label>
                 <Textarea
