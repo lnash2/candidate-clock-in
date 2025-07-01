@@ -1,11 +1,11 @@
 
 #!/bin/bash
-echo "🚀 Starting Railway deployment..."
-echo "Node version: $(node --version)"
-echo "NPM version: $(npm --version)"
+echo "🚀 Railway Deployment v4.0 Starting..."
+echo "Node: $(node --version)"
+echo "NPM: $(npm --version)"
 echo "Environment: $NODE_ENV"
 echo "Port: $PORT"
-echo "Railway Environment: $RAILWAY_ENVIRONMENT"
+echo "Railway Env: $RAILWAY_ENVIRONMENT"
 
-# Start the application
+# Ultra-simple Railway start
 exec node server.js

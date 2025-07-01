@@ -1,42 +1,30 @@
 
 {
   "name": "pcrm-proxy-service",
-  "version": "3.0.0",
-  "description": "Proxy service for legacy PostgreSQL connections - Railway optimized v3",
+  "version": "4.0.0",
+  "description": "Railway-optimized proxy service for PCRM - Ultra minimal v4",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
     "railway:start": "node server.js",
-    "railway:build": "echo 'Railway build complete - v3.0'",
-    "test": "echo 'No tests specified'"
+    "railway:build": "echo 'Railway build v4.0 complete'",
+    "test": "echo 'No tests - minimal deployment'"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "cors": "^2.8.5",
-    "pg": "^8.11.3",
-    "dotenv": "^16.3.1"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.1"
+    "express": "^4.18.2"
   },
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=8.0.0"
   },
   "railway": {
-    "build": {
-      "command": "npm run railway:build"
-    },
-    "start": {
-      "command": "npm start"
-    },
     "healthcheckPath": "/",
-    "healthcheckTimeout": 30,
+    "healthcheckTimeout": 10,
     "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 3
+    "restartPolicyMaxRetries": 2
   },
-  "keywords": ["proxy", "postgresql", "railway", "express"],
+  "keywords": ["railway", "proxy", "minimal", "express"],
   "author": "PCRM Team",
   "license": "MIT"
 }

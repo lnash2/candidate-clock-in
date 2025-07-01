@@ -2,55 +2,33 @@
 const express = require('express');
 const app = express();
 
-// Railway requires binding to 0.0.0.0 and the PORT environment variable
-const PORT = process.env.PORT || 3001;
+// Railway environment variables
+const PORT = process.env.PORT || 8080;
 const HOST = '0.0.0.0';
 
-console.log('🚀 Starting PCRM Proxy Service v3.0...');
+console.log('🚀 Railway-Optimized PCRM Proxy Service v4.0 Starting...');
 console.log('Environment:', process.env.NODE_ENV);
 console.log('Port:', PORT);
 console.log('Host:', HOST);
+console.log('Railway Environment:', process.env.RAILWAY_ENVIRONMENT);
 
-// Middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+// Minimal middleware - only what's absolutely necessary
+app.use(express.json({ limit: '1mb' }));
 
-// Basic CORS - Railway needs this
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
-  next();
-});
-
-// Request logging
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
-  next();
-});
-
-// Railway health check endpoint - CRITICAL
+// CRITICAL: Railway health check endpoint - must be FIRST and FASTEST
 app.get('/', (req, res) => {
-  console.log('🏥 Root health check accessed');
+  console.log('🏥 Railway health check hit at:', new Date().toISOString());
+  res.status(200).send('OK');
+});
+
+// Secondary health endpoint for debugging
+app.get('/health', (req, res) => {
+  console.log('🩺 Health endpoint accessed');
   res.status(200).json({
     status: 'healthy',
-    service: 'PCRM Proxy Service',
-    version: '3.0.0',
-    timestamp: new Date().toISOString(),
-    railway: true
-  });
-});
-
-// Additional health endpoint
-app.get('/health', (req, res) => {
-  console.log('🏥 Health endpoint accessed');
-  res.status(200).json({
-    status: 'ok',
-    uptime: process.uptime(),
-    memory: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + 'MB',
+    service: 'PCRM Proxy',
+    version: '4.0.0',
+    port: PORT,
     timestamp: new Date().toISOString()
   });
 });
@@ -60,90 +38,69 @@ app.get('/debug', (req, res) => {
   console.log('🔍 Debug endpoint accessed');
   res.status(200).json({
     success: true,
-    message: 'Debug endpoint working',
-    headers: req.headers,
+    message: 'Railway deployment working',
     env: {
       NODE_ENV: process.env.NODE_ENV,
       PORT: process.env.PORT,
       RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT
     },
+    server: {
+      host: HOST,
+      port: PORT,
+      uptime: process.uptime()
+    },
     timestamp: new Date().toISOString()
   });
 });
 
-// Test endpoint for proxy functionality
+// Test endpoint
 app.post('/test-connection', (req, res) => {
-  console.log('🧪 Test connection endpoint accessed');
+  console.log('🧪 Test connection accessed');
   res.status(200).json({
     success: true,
-    message: 'Proxy service is working',
-    received_data: req.body,
+    message: 'Railway proxy service operational',
+    received: req.body,
     timestamp: new Date().toISOString()
   });
 });
 
-// Catch all 404s
-app.use('*', (req, res) => {
-  console.log(`❌ 404 - Route not found: ${req.originalUrl}`);
-  res.status(404).json({
-    success: false,
-    error: 'Route not found',
-    requested_route: req.originalUrl,
-    available_routes: ['/', '/health', '/debug', '/test-connection']
-  });
+// Minimal error handling
+app.use((err, req, res, next) => {
+  console.error('💥 Error:', err.message);
+  res.status(500).json({ error: 'Server error', message: err.message });
 });
 
-// Global error handler
-app.use((error, req, res, next) => {
-  console.error('💥 Server error:', error.message);
-  console.error('Stack:', error.stack);
-  res.status(500).json({
-    success: false,
-    error: 'Internal server error',
-    message: error.message
-  });
+// Start server with Railway-optimized configuration
+const server = app.listen(PORT, HOST, () => {
+  console.log(`✅ Railway server LIVE on ${HOST}:${PORT}`);
+  console.log(`✅ Health check: http://${HOST}:${PORT}/`);
+  console.log(`✅ Railway deployment successful`);
 });
 
-// Start server with proper error handling
-const server = app.listen(PORT, HOST, (err) => {
-  if (err) {
-    console.error('❌ Failed to start server:', err);
-    process.exit(1);
-  }
-  console.log(`✅ Server successfully started on ${HOST}:${PORT}`);
-  console.log(`✅ Railway health check available at: http://${HOST}:${PORT}/`);
-});
-
-// Handle server startup errors
+// Railway-specific error handling
 server.on('error', (err) => {
-  console.error('❌ Server error on startup:', err);
+  console.error('❌ Railway server error:', err);
   if (err.code === 'EADDRINUSE') {
-    console.error(`❌ Port ${PORT} is already in use`);
+    console.error(`❌ Port ${PORT} already in use`);
   }
   process.exit(1);
 });
 
-// Graceful shutdown handlers
-const gracefulShutdown = (signal) => {
-  console.log(`📡 ${signal} received, shutting down gracefully`);
+// Graceful shutdown for Railway
+process.on('SIGTERM', () => {
+  console.log('📡 SIGTERM received - Railway shutdown');
   server.close(() => {
-    console.log('✅ Server closed successfully');
+    console.log('✅ Server closed for Railway');
     process.exit(0);
   });
-};
-
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-
-// Prevent crashes from unhandled errors
-process.on('uncaughtException', (err) => {
-  console.error('💥 Uncaught Exception:', err);
-  process.exit(1);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
-  process.exit(1);
+process.on('SIGINT', () => {
+  console.log('📡 SIGINT received - Manual shutdown');
+  server.close(() => {
+    console.log('✅ Server closed manually');
+    process.exit(0);
+  });
 });
 
-console.log('🚀 Proxy service initialization complete');
+console.log('🚀 Railway-optimized proxy service ready');
