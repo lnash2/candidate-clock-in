@@ -7,7 +7,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Database, Upload, RefreshCw, CheckCircle, XCircle, Clock, TestTube } from 'lucide-react';
@@ -25,29 +24,13 @@ interface MigrationStatus {
   updated_at: string;
 }
 
-interface DatabaseConfig {
-  host: string;
-  port: number;
-  username: string;
-  password: string;
-  database: string;
-  sslMode: boolean;
-}
-
 const MigrationDashboard = () => {
   const [migrationStatus, setMigrationStatus] = useState<MigrationStatus[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [tablesToMigrate, setTablesToMigrate] = useState('');
   const [batchSize, setBatchSize] = useState(1000);
-  const [dbConfig, setDbConfig] = useState<DatabaseConfig>({
-    host: '',
-    port: 5432,
-    username: '',
-    password: '',
-    database: '',
-    sslMode: true
-  });
+  const [connectionString, setConnectionString] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -74,10 +57,10 @@ const MigrationDashboard = () => {
   };
 
   const testConnection = async () => {
-    if (!dbConfig.host || !dbConfig.username || !dbConfig.password || !dbConfig.database) {
+    if (!connectionString.trim()) {
       toast({
         title: 'Error',
-        description: 'Please fill in all database connection fields',
+        description: 'Please enter a connection string',
         variant: 'destructive',
       });
       return;
@@ -86,16 +69,10 @@ const MigrationDashboard = () => {
     setIsTestingConnection(true);
     
     try {
-      console.log('🔍 Testing connection with config:', {
-        host: dbConfig.host,
-        port: dbConfig.port,
-        username: dbConfig.username,
-        database: dbConfig.database,
-        sslMode: dbConfig.sslMode
-      });
+      console.log('🔍 Testing connection with connection string');
 
       const response = await supabase.functions.invoke('test-legacy-connection', {
-        body: { config: dbConfig }
+        body: { connectionString }
       });
 
       console.log('📋 Connection test response:', response);
@@ -108,9 +85,9 @@ const MigrationDashboard = () => {
       if (response.data?.success) {
         toast({
           title: 'Success! 🎉',
-          description: `Database connection successful! Strategy: ${response.data.strategy}. Found ${response.data.table_count} tables.`,
+          description: `Database connection successful! Found ${response.data.table_count} tables.`,
         });
-        console.log('✅ Connection successful with strategy:', response.data.strategy);
+        console.log('✅ Connection successful');
       } else {
         console.error('❌ Connection failed with errors:', response.data);
         throw new Error(response.data?.error || 'Connection failed with unknown error');
@@ -134,10 +111,10 @@ const MigrationDashboard = () => {
   };
 
   const startMigration = async () => {
-    if (!dbConfig.host || !dbConfig.username || !dbConfig.password || !dbConfig.database) {
+    if (!connectionString.trim()) {
       toast({
         title: 'Error',
-        description: 'Please fill in all database connection fields',
+        description: 'Please enter a connection string',
         variant: 'destructive',
       });
       return;
@@ -153,11 +130,9 @@ const MigrationDashboard = () => {
 
       const response = await supabase.functions.invoke('migrate-legacy-data', {
         body: {
-          config: {
-            database: dbConfig,
-            tables: tables.length > 0 ? tables : [],
-            batchSize
-          }
+          connectionString,
+          tables: tables.length > 0 ? tables : [],
+          batchSize
         }
       });
 
@@ -186,7 +161,7 @@ const MigrationDashboard = () => {
     try {
       const response = await supabase.functions.invoke('sync-legacy-data', {
         body: {
-          database: dbConfig,
+          connectionString,
           tableName
         }
       });
@@ -256,78 +231,39 @@ const MigrationDashboard = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-800">
-                <strong>🔧 Using Enhanced SSL Connection Strategy</strong><br/>
-                This configuration now uses multiple SSL bypass strategies to handle expired certificates while maintaining security requirements.
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="host">Database Host</Label>
-                  <Input
-                    id="host"
-                    placeholder="your-database-host.com"
-                    value={dbConfig.host}
-                    onChange={(e) => setDbConfig({...dbConfig, host: e.target.value})}
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="port">Port</Label>
-                  <Input
-                    id="port"
-                    type="number"
-                    placeholder="5432"
-                    value={dbConfig.port}
-                    onChange={(e) => setDbConfig({...dbConfig, port: Number(e.target.value)})}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="username">Username</Label>
-                  <Input
-                    id="username"
-                    placeholder="postgres"
-                    value={dbConfig.username}
-                    onChange={(e) => setDbConfig({...dbConfig, username: e.target.value})}
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Enter password"
-                    value={dbConfig.password}
-                    onChange={(e) => setDbConfig({...dbConfig, password: e.target.value})}
-                  />
-                </div>
+                <strong>🔧 Enhanced SSL Connection Strategy</strong><br/>
+                Use a complete PostgreSQL connection string with SSL bypass parameters for expired certificates.
               </div>
 
               <div>
-                <Label htmlFor="database">Database Name</Label>
-                <Input
-                  id="database"
-                  placeholder="postgres"
-                  value={dbConfig.database}
-                  onChange={(e) => setDbConfig({...dbConfig, database: e.target.value})}
+                <Label htmlFor="connectionString">PostgreSQL Connection String</Label>
+                <Textarea
+                  id="connectionString"
+                  placeholder="postgresql://username:password@host:port/database?sslmode=require&sslcert=/dev/null&sslkey=/dev/null&sslrootcert=/dev/null"
+                  value={connectionString}
+                  onChange={(e) => setConnectionString(e.target.value)}
+                  rows={3}
+                  className="font-mono text-sm"
                 />
               </div>
 
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="ssl"
-                  checked={dbConfig.sslMode}
-                  onCheckedChange={(checked) => setDbConfig({...dbConfig, sslMode: checked})}
-                />
-                <Label htmlFor="ssl">Enable SSL/TLS (Required for RDS)</Label>
+              <div className="bg-gray-50 border border-gray-200 rounded p-3 text-sm">
+                <strong>📋 Connection String Examples:</strong><br/>
+                <div className="mt-2 space-y-2 font-mono text-xs">
+                  <div><strong>Standard SSL:</strong><br/>
+                  <code>postgresql://user:pass@host:5432/db?sslmode=require</code></div>
+                  
+                  <div><strong>SSL with expired certificates (bypass):</strong><br/>
+                  <code>postgresql://user:pass@host:5432/db?sslmode=require&sslcert=/dev/null&sslkey=/dev/null&sslrootcert=/dev/null</code></div>
+                  
+                  <div><strong>No SSL (if allowed):</strong><br/>
+                  <code>postgresql://user:pass@host:5432/db?sslmode=disable</code></div>
+                </div>
               </div>
 
               <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
                 <strong>⚠️ SSL Certificate Notice:</strong><br/>
-                If you're connecting to RDS with expired SSL certificates, our connection strategy will automatically bypass certificate validation while maintaining encrypted connections.
+                For RDS instances with expired SSL certificates, use the bypass parameters shown above to maintain encrypted connections while bypassing certificate validation.
               </div>
 
               <Button
@@ -339,7 +275,7 @@ const MigrationDashboard = () => {
                 {isTestingConnection ? (
                   <>
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Testing Connection with Enhanced SSL Strategy...
+                    Testing Connection...
                   </>
                 ) : (
                   <>
