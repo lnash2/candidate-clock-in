@@ -69,9 +69,9 @@ const MigrationDashboard = () => {
     setIsTestingConnection(true);
     
     try {
-      console.log('🔍 Testing connection via proxy service');
+      console.log('🔍 Testing connection via simple proxy service');
 
-      const response = await supabase.functions.invoke('test-legacy-connection', {
+      const response = await supabase.functions.invoke('test-legacy-connection-simple', {
         body: { connectionString }
       });
 
@@ -91,7 +91,7 @@ const MigrationDashboard = () => {
           title: 'Success! 🎉',
           description: message,
         });
-        console.log('✅ Connection successful via proxy');
+        console.log('✅ Connection successful via simple proxy');
       } else {
         console.error('❌ Connection failed with errors:', response.data);
         throw new Error(response.data?.error || 'Connection failed with unknown error');
@@ -234,9 +234,9 @@ const MigrationDashboard = () => {
               <CardTitle>Database Connection Configuration</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="bg-green-50 border border-green-200 rounded p-3 text-sm text-green-800">
-                <strong>🚀 Enhanced Proxy Service</strong><br/>
-                Now using a robust Node.js proxy service that handles SSL certificate issues and provides better reliability for legacy database connections.
+              <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-800">
+                <strong>🔧 Using New Simple Connection Test</strong><br/>
+                Now using a simplified Edge Function that should bypass environment variable issues and connect directly to the proxy service.
               </div>
 
               <div>
@@ -282,12 +282,12 @@ const MigrationDashboard = () => {
                 {isTestingConnection ? (
                   <>
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Testing Connection via Proxy...
+                    Testing Connection via Simple Proxy...
                   </>
                 ) : (
                   <>
                     <TestTube className="mr-2 h-4 w-4" />
-                    Test Database Connection
+                    Test Database Connection (Simple)
                   </>
                 )}
               </Button>
