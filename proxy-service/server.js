@@ -1,4 +1,3 @@
-
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
@@ -7,13 +6,40 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 3001;
 
+// Enhanced CORS configuration for Lovable frontend
+const corsOptions = {
+  origin: [
+    'https://lovable.dev',
+    'https://www.lovable.dev',
+    'https://gptengineer.app',
+    'https://www.gptengineer.app',
+    /^https:\/\/.*\.lovable\.dev$/,
+    /^https:\/\/.*\.gptengineer\.app$/,
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:8080'
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
+
+// Handle preflight requests explicitly
+app.options('*', cors(corsOptions));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    cors_enabled: true,
+    service: 'PCRM Proxy Service'
+  });
 });
 
 // Test database connection endpoint
@@ -268,6 +294,7 @@ app.post('/sync-data', async (req, res) => {
 app.listen(port, () => {
   console.log(`🚀 PCRM Proxy Service running on port ${port}`);
   console.log(`📋 Health check: http://localhost:${port}/health`);
+  console.log(`🌐 CORS configured for Lovable domains`);
 });
 
 // Graceful shutdown
