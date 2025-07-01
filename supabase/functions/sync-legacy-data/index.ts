@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { Client } from "https://deno.land/x/postgres@v0.17.0/mod.ts"
@@ -28,7 +29,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting legacy data sync with non-SSL priority...')
+    console.log('Starting legacy data sync with SSL certificate bypass...')
     
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -37,8 +38,8 @@ serve(async (req) => {
 
     const { database, tableName, lastSyncTimestamp } = await req.json() as SyncRequest
     
-    // Use robust connection with non-SSL priority
-    const legacyClient = await createRobustConnection(database)
+    // Create SSL connection with certificate bypass
+    const legacyClient = await createSSLConnection(database)
     
     console.log(`Connected to legacy database for sync of ${tableName}`)
 
@@ -116,69 +117,25 @@ serve(async (req) => {
   }
 })
 
-async function createRobustConnection(config: DatabaseConfig): Promise<Client> {
-  const strategies = []
+async function createSSLConnection(config: DatabaseConfig): Promise<Client> {
+  console.log('Creating SSL connection with certificate bypass...')
   
-  // Strategy 1: Non-SSL connection (most likely to work)
-  strategies.push({
-    name: 'Non-SSL connection',
-    config: {
-      hostname: config.host,
-      port: config.port,
-      user: config.username,
-      password: config.password,
-      database: config.database,
-      tls: {
-        enabled: false
-      }
-    }
-  })
-  
-  // Strategy 2: Connection string without SSL
-  strategies.push({
-    name: 'Connection string without SSL',
-    config: `postgres://${config.username}:${config.password}@${config.host}:${config.port}/${config.database}?sslmode=disable`
-  })
-  
-  // Strategy 3: SSL prefer (auto-fallback)
-  strategies.push({
-    name: 'SSL prefer mode',
-    config: {
-      hostname: config.host,
-      port: config.port,
-      user: config.username,
-      password: config.password,
-      database: config.database,
-      tls: {
-        enabled: true,
-        enforce: false
-      }
-    }
-  })
-  
-  // Strategy 4: Basic connection
-  strategies.push({
-    name: 'Basic connection',
-    config: {
-      hostname: config.host,
-      port: config.port,
-      user: config.username,
-      password: config.password,
-      database: config.database
-    }
-  })
-  
-  for (const strategy of strategies) {
-    try {
-      console.log(`Attempting connection with: ${strategy.name}`)
-      const client = new Client(strategy.config)
-      await client.connect()
-      console.log(`✅ Connected successfully using: ${strategy.name}`)
-      return client
-    } catch (error) {
-      console.log(`❌ ${strategy.name} failed:`, error.message)
+  const sslConfig = {
+    hostname: config.host,
+    port: config.port,
+    user: config.username,
+    password: config.password,
+    database: config.database,
+    tls: {
+      enabled: true,
+      enforce: true,
+      rejectUnauthorized: false,
+      checkServerIdentity: () => undefined
     }
   }
   
-  throw new Error('All connection strategies failed')
+  const client = new Client(sslConfig)
+  await client.connect()
+  console.log('✅ Connected successfully using SSL with certificate bypass')
+  return client
 }

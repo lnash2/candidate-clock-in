@@ -28,7 +28,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting legacy data migration with non-SSL priority...')
+    console.log('Starting legacy data migration with SSL certificate bypass...')
     
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -39,8 +39,8 @@ serve(async (req) => {
     
     console.log(`Connecting to: ${config.database.host}:${config.database.port}/${config.database.database}`)
     
-    // Use robust connection with non-SSL priority
-    const legacyClient = await createRobustConnection(config.database)
+    // Create SSL connection with certificate bypass
+    const legacyClient = await createSSLConnection(config.database)
     
     console.log('Connected to legacy database successfully')
 
@@ -213,71 +213,27 @@ serve(async (req) => {
   }
 })
 
-async function createRobustConnection(config: DatabaseConfig): Promise<Client> {
-  const strategies = []
+async function createSSLConnection(config: DatabaseConfig): Promise<Client> {
+  console.log('Creating SSL connection with certificate bypass...')
   
-  // Strategy 1: Non-SSL connection (most likely to work)
-  strategies.push({
-    name: 'Non-SSL connection',
-    config: {
-      hostname: config.host,
-      port: config.port,
-      user: config.username,
-      password: config.password,
-      database: config.database,
-      tls: {
-        enabled: false
-      }
-    }
-  })
-  
-  // Strategy 2: Connection string without SSL
-  strategies.push({
-    name: 'Connection string without SSL',
-    config: `postgres://${config.username}:${config.password}@${config.host}:${config.port}/${config.database}?sslmode=disable`
-  })
-  
-  // Strategy 3: SSL prefer (auto-fallback)
-  strategies.push({
-    name: 'SSL prefer mode',
-    config: {
-      hostname: config.host,
-      port: config.port,
-      user: config.username,
-      password: config.password,
-      database: config.database,
-      tls: {
-        enabled: true,
-        enforce: false
-      }
-    }
-  })
-  
-  // Strategy 4: Basic connection
-  strategies.push({
-    name: 'Basic connection',
-    config: {
-      hostname: config.host,
-      port: config.port,
-      user: config.username,
-      password: config.password,
-      database: config.database
-    }
-  })
-  
-  for (const strategy of strategies) {
-    try {
-      console.log(`Attempting connection with: ${strategy.name}`)
-      const client = new Client(strategy.config)
-      await client.connect()
-      console.log(`✅ Connected successfully using: ${strategy.name}`)
-      return client
-    } catch (error) {
-      console.log(`❌ ${strategy.name} failed:`, error.message)
+  const sslConfig = {
+    hostname: config.host,
+    port: config.port,
+    user: config.username,
+    password: config.password,
+    database: config.database,
+    tls: {
+      enabled: true,
+      enforce: true,
+      rejectUnauthorized: false,
+      checkServerIdentity: () => undefined
     }
   }
   
-  throw new Error('All connection strategies failed')
+  const client = new Client(sslConfig)
+  await client.connect()
+  console.log('✅ Connected successfully using SSL with certificate bypass')
+  return client
 }
 
 async function createPCRMTable(supabaseClient: any, tableName: string, columns: any[]) {
