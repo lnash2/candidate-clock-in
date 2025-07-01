@@ -28,7 +28,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting legacy data migration with SSL certificate bypass...')
+    console.log('🚀 Starting legacy data migration with multiple SSL strategies...')
     
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -37,12 +37,12 @@ serve(async (req) => {
 
     const { config } = await req.json() as { config: MigrationConfig }
     
-    console.log(`Connecting to: ${config.database.host}:${config.database.port}/${config.database.database}`)
+    console.log(`🎯 Connecting to: ${config.database.host}:${config.database.port}/${config.database.database}`)
     
-    // Create SSL connection with certificate bypass
+    // Create SSL connection using multiple strategies
     const legacyClient = await createSSLConnection(config.database)
     
-    console.log('Connected to legacy database successfully')
+    console.log('✅ Connected to legacy database successfully')
 
     // Get all tables from legacy database if not specified
     let tablesToMigrate = config.tables
@@ -184,7 +184,7 @@ serve(async (req) => {
     }
 
     await legacyClient.end()
-    console.log('Migration completed')
+    console.log('✅ Migration completed')
 
     return new Response(
       JSON.stringify({ 
@@ -199,7 +199,7 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Migration error:', error)
+    console.error('🚨 Migration error:', error)
     return new Response(
       JSON.stringify({ 
         success: false, 
@@ -214,26 +214,75 @@ serve(async (req) => {
 })
 
 async function createSSLConnection(config: DatabaseConfig): Promise<Client> {
-  console.log('Creating SSL connection with certificate bypass...')
+  console.log('🔍 Creating SSL connection with multiple bypass strategies...')
   
-  const sslConfig = {
-    hostname: config.host,
-    port: config.port,
-    user: config.username,
-    password: config.password,
-    database: config.database,
-    tls: {
-      enabled: true,
-      enforce: true,
-      rejectUnauthorized: false,
-      checkServerIdentity: () => undefined
+  // Strategy 1: Connection string approach
+  try {
+    console.log('📋 Trying Strategy 1: Connection string with SSL parameters')
+    
+    const connectionString = `postgresql://${config.username}:${encodeURIComponent(config.password)}@${config.host}:${config.port}/${config.database}?sslmode=require&sslcert=/dev/null&sslkey=/dev/null&sslrootcert=/dev/null`
+    
+    const client = new Client(connectionString)
+    await client.connect()
+    console.log('✅ Strategy 1 SUCCESS - Connection string approach worked')
+    return client
+    
+  } catch (error1) {
+    console.error('❌ Strategy 1 failed:', error1.message)
+    
+    // Strategy 2: Enhanced TLS config
+    try {
+      console.log('📋 Trying Strategy 2: Enhanced TLS configuration')
+      
+      const client = new Client({
+        hostname: config.host,
+        port: config.port,
+        user: config.username,
+        password: config.password,
+        database: config.database,
+        tls: {
+          enabled: true,
+          enforce: true,
+          rejectUnauthorized: false,
+          checkServerIdentity: () => undefined,
+          ciphers: 'ALL',
+          secureProtocol: 'TLSv1_2_method'
+        }
+      })
+      
+      await client.connect()
+      console.log('✅ Strategy 2 SUCCESS - Enhanced TLS configuration worked')
+      return client
+      
+    } catch (error2) {
+      console.error('❌ Strategy 2 failed:', error2.message)
+      
+      // Strategy 3: Simple boolean SSL
+      try {
+        console.log('📋 Trying Strategy 3: Simple boolean SSL')
+        
+        const client = new Client({
+          hostname: config.host,
+          port: config.port,
+          user: config.username,
+          password: config.password,
+          database: config.database,
+          tls: true
+        })
+        
+        await client.connect()
+        console.log('✅ Strategy 3 SUCCESS - Simple boolean SSL worked')
+        return client
+        
+      } catch (error3) {
+        console.error('❌ All SSL strategies failed')
+        console.error('Strategy 1 error:', error1.message)
+        console.error('Strategy 2 error:', error2.message) 
+        console.error('Strategy 3 error:', error3.message)
+        throw new Error(`All SSL connection strategies failed. Last error: ${error3.message}`)
+      }
     }
   }
-  
-  const client = new Client(sslConfig)
-  await client.connect()
-  console.log('✅ Connected successfully using SSL with certificate bypass')
-  return client
 }
 
 async function createPCRMTable(supabaseClient: any, tableName: string, columns: any[]) {
