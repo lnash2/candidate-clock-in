@@ -17,16 +17,7 @@ router.post('/', async (req, res) => {
 
   let pool;
   try {
-    pool = new Pool({
-      connectionString,
-      ssl: {
-        rejectUnauthorized: false
-      },
-      max: 1,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 10000
-    });
-
+    pool = createPool(connectionString);
     const client = await pool.connect();
 
     let query = `SELECT * FROM ${tableName}`;

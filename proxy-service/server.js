@@ -12,37 +12,29 @@ const syncDataRoutes = require('./routes/syncData');
 const app = express();
 const port = process.env.PORT || 3001;
 
-// Enhanced CORS handling
+// Enhanced CORS handling with detailed logging
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   console.log(`🌐 Request from origin: ${origin || 'no origin'}`);
   console.log(`📋 Request method: ${req.method}`);
   console.log(`📋 Request URL: ${req.url}`);
+  console.log(`📋 User-Agent: ${req.headers['user-agent'] || 'unknown'}`);
   next();
 });
 
-// Apply CORS middleware
+// Apply CORS middleware - let it handle all preflight requests
 app.use(cors(corsOptions));
 
 // Parse JSON with increased limit
 app.use(express.json({ limit: '50mb' }));
-
-// Enhanced preflight handling
-app.options('*', (req, res) => {
-  console.log('🔄 Handling preflight request');
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.sendStatus(200);
-});
 
 // Add a simple root endpoint for testing
 app.get('/', (req, res) => {
   res.json({ 
     message: 'PCRM Proxy Service is running',
     timestamp: new Date().toISOString(),
-    cors_enabled: true
+    cors_enabled: true,
+    allowed_origins: corsOptions.origin.length + ' origins configured'
   });
 });
 
@@ -75,7 +67,7 @@ app.use('*', (req, res) => {
 app.listen(port, '0.0.0.0', () => {
   console.log(`🚀 PCRM Proxy Service running on port ${port}`);
   console.log(`📋 Health check: http://localhost:${port}/health`);
-  console.log(`🌐 CORS configured for Lovable domains`);
+  console.log(`🌐 CORS configured for ${corsOptions.origin.length} origins including Lovable domains`);
   console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 

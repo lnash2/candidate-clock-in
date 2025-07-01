@@ -7,6 +7,9 @@ const corsOptions = {
     'https://www.gptengineer.app',
     /^https:\/\/.*\.lovable\.dev$/,
     /^https:\/\/.*\.gptengineer\.app$/,
+    // Add missing Lovable project domains
+    /^https:\/\/.*\.lovableproject\.com$/,
+    'https://0b88ce54-c9a6-4d2e-a553-df1b0e0a248d.lovableproject.com',
     'http://localhost:3000',
     'http://localhost:5173',
     'http://localhost:8080',
