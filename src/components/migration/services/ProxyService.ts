@@ -56,10 +56,11 @@ export class ProxyService {
     });
   }
 
-  static async syncData(connectionString: string, tableName: string) {
+  static async syncData(connectionString: string, tableName: string, lastSyncTimestamp?: string) {
     return this.makeRequest('/sync-data', {
       connectionString,
-      tableName
+      tableName,
+      lastSyncTimestamp
     });
   }
 }

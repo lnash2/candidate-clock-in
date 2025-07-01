@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { RefreshCw, TestTube } from 'lucide-react';
+import { RefreshCw, TestTube, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ProxyService } from '../services/ProxyService';
 
@@ -18,6 +18,7 @@ export const ConnectionTestCard: React.FC<ConnectionTestCardProps> = ({
   onConnectionStringChange
 }) => {
   const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const { toast } = useToast();
 
   const testConnection = async () => {
@@ -31,6 +32,7 @@ export const ConnectionTestCard: React.FC<ConnectionTestCardProps> = ({
     }
 
     setIsTestingConnection(true);
+    setConnectionStatus('idle');
     
     try {
       console.log('🔍 Testing connection via Railway proxy service');
@@ -38,10 +40,11 @@ export const ConnectionTestCard: React.FC<ConnectionTestCardProps> = ({
       const data = await ProxyService.testConnection(connectionString);
 
       if (data.success) {
-        const message = `Database connection successful! Found ${data.table_count} tables.`;
-          
+        const message = `Database connection successful! Found ${data.table_count} tables. Version: ${data.database_version?.substring(0, 50)}...`;
+        
+        setConnectionStatus('success');
         toast({
-          title: 'Success! 🎉',
+          title: 'Connection Successful! 🎉',
           description: message,
         });
         console.log('✅ Connection successful via Railway proxy');
@@ -50,6 +53,7 @@ export const ConnectionTestCard: React.FC<ConnectionTestCardProps> = ({
       }
     } catch (error) {
       console.error('🚨 Connection test error:', error);
+      setConnectionStatus('error');
       
       toast({
         title: 'Connection Failed',
@@ -64,12 +68,15 @@ export const ConnectionTestCard: React.FC<ConnectionTestCardProps> = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Database Connection Configuration</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          Database Connection Configuration
+          {connectionStatus === 'success' && <CheckCircle className="h-5 w-5 text-green-600" />}
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="bg-green-50 border border-green-200 rounded p-3 text-sm text-green-800">
-          <strong>🚀 Enhanced Railway Proxy Service</strong><br/>
-          Direct connection with improved CORS handling and error reporting. This service bypasses browser limitations and provides reliable database connectivity.
+          <strong>🚀 Railway Proxy Service Active</strong><br/>
+          Direct connection with enhanced CORS handling and comprehensive error reporting. Service is running and ready for database connections.
         </div>
 
         <div>
@@ -98,33 +105,30 @@ export const ConnectionTestCard: React.FC<ConnectionTestCardProps> = ({
           </div>
         </div>
 
-        <div className="bg-green-50 border border-green-200 rounded p-3 text-sm text-green-800">
-          <strong>✅ Enhanced Proxy Service Features:</strong><br/>
-          • Comprehensive CORS configuration<br/>
-          • Better error handling and logging<br/>
-          • Enhanced SSL certificate handling<br/>
-          • Improved network timeout management<br/>
-          • Direct HTTP calls with detailed debugging
-        </div>
-
         <Button
           onClick={testConnection}
           disabled={isTestingConnection}
-          variant="outline"
+          variant={connectionStatus === 'success' ? 'default' : 'outline'}
           className="w-full"
         >
           {isTestingConnection ? (
             <>
               <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-              Testing Connection via Enhanced Proxy...
+              Testing Connection via Railway Proxy...
             </>
           ) : (
             <>
               <TestTube className="mr-2 h-4 w-4" />
-              Test Database Connection (Enhanced)
+              {connectionStatus === 'success' ? 'Test Connection Again' : 'Test Database Connection'}
             </>
           )}
         </Button>
+
+        {connectionStatus === 'success' && (
+          <div className="bg-green-50 border border-green-200 rounded p-3 text-sm text-green-800">
+            ✅ Connection verified - Ready to proceed with migration!
+          </div>
+        )}
       </CardContent>
     </Card>
   );
