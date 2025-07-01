@@ -1,99 +1,149 @@
 
 const express = require('express');
-const cors = require('cors');
-
 const app = express();
-const port = process.env.PORT || 3001;
 
-console.log('🚀 Starting PCRM Proxy Service...');
-console.log('Port:', port);
-console.log('Environment:', process.env.NODE_ENV || 'development');
+// Railway requires binding to 0.0.0.0 and the PORT environment variable
+const PORT = process.env.PORT || 3001;
+const HOST = '0.0.0.0';
 
-// Basic CORS - allow all origins for now
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: false
-}));
+console.log('🚀 Starting PCRM Proxy Service v3.0...');
+console.log('Environment:', process.env.NODE_ENV);
+console.log('Port:', PORT);
+console.log('Host:', HOST);
 
-app.use(express.json());
+// Middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
 
-// Simple logging
+// Basic CORS - Railway needs this
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url}`);
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
   next();
 });
 
-// Railway health check - MUST respond quickly
+// Request logging
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
+
+// Railway health check endpoint - CRITICAL
 app.get('/', (req, res) => {
-  console.log('Health check hit');
+  console.log('🏥 Root health check accessed');
   res.status(200).json({
     status: 'healthy',
-    message: 'PCRM Proxy Service is running',
+    service: 'PCRM Proxy Service',
+    version: '3.0.0',
     timestamp: new Date().toISOString(),
-    port: port
+    railway: true
   });
 });
 
-// Simple health endpoint
+// Additional health endpoint
 app.get('/health', (req, res) => {
+  console.log('🏥 Health endpoint accessed');
   res.status(200).json({
     status: 'ok',
-    service: 'PCRM Proxy Service',
+    uptime: process.uptime(),
+    memory: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + 'MB',
     timestamp: new Date().toISOString()
   });
 });
 
-// Basic debug endpoint
+// Debug endpoint
 app.get('/debug', (req, res) => {
+  console.log('🔍 Debug endpoint accessed');
   res.status(200).json({
     success: true,
     message: 'Debug endpoint working',
+    headers: req.headers,
+    env: {
+      NODE_ENV: process.env.NODE_ENV,
+      PORT: process.env.PORT,
+      RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Test endpoint for proxy functionality
+app.post('/test-connection', (req, res) => {
+  console.log('🧪 Test connection endpoint accessed');
+  res.status(200).json({
+    success: true,
+    message: 'Proxy service is working',
+    received_data: req.body,
     timestamp: new Date().toISOString()
   });
 });
 
 // Catch all 404s
 app.use('*', (req, res) => {
+  console.log(`❌ 404 - Route not found: ${req.originalUrl}`);
   res.status(404).json({
     success: false,
     error: 'Route not found',
-    requested_route: req.originalUrl
+    requested_route: req.originalUrl,
+    available_routes: ['/', '/health', '/debug', '/test-connection']
   });
 });
 
-// Error handler
+// Global error handler
 app.use((error, req, res, next) => {
-  console.error('Server error:', error);
+  console.error('💥 Server error:', error.message);
+  console.error('Stack:', error.stack);
   res.status(500).json({
     success: false,
-    error: 'Internal server error'
+    error: 'Internal server error',
+    message: error.message
   });
 });
 
-// Start server
-const server = app.listen(port, '0.0.0.0', (err) => {
+// Start server with proper error handling
+const server = app.listen(PORT, HOST, (err) => {
   if (err) {
     console.error('❌ Failed to start server:', err);
     process.exit(1);
   }
-  console.log(`✅ Server running on 0.0.0.0:${port}`);
+  console.log(`✅ Server successfully started on ${HOST}:${PORT}`);
+  console.log(`✅ Railway health check available at: http://${HOST}:${PORT}/`);
 });
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully');
-  server.close(() => {
-    console.log('Server closed');
-    process.exit(0);
-  });
+// Handle server startup errors
+server.on('error', (err) => {
+  console.error('❌ Server error on startup:', err);
+  if (err.code === 'EADDRINUSE') {
+    console.error(`❌ Port ${PORT} is already in use`);
+  }
+  process.exit(1);
 });
 
-process.on('SIGINT', () => {
-  console.log('SIGINT received, shutting down gracefully');
+// Graceful shutdown handlers
+const gracefulShutdown = (signal) => {
+  console.log(`📡 ${signal} received, shutting down gracefully`);
   server.close(() => {
-    console.log('Server closed');
+    console.log('✅ Server closed successfully');
     process.exit(0);
   });
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Prevent crashes from unhandled errors
+process.on('uncaughtException', (err) => {
+  console.error('💥 Uncaught Exception:', err);
+  process.exit(1);
 });
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
+console.log('🚀 Proxy service initialization complete');
