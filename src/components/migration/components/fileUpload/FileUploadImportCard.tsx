@@ -5,23 +5,12 @@ import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { Upload, Database, FileText, CheckCircle, AlertCircle, Loader2, X } from 'lucide-react';
-
-interface ImportStatus {
-  step: 'idle' | 'reading-files' | 'validating' | 'importing-schema' | 'importing-data' | 'complete' | 'error';
-  progress: number;
-  message: string;
-  error?: string;
-}
-
-interface UploadedFile {
-  file: File;
-  type: 'schema' | 'data' | 'unknown';
-  content?: string;
-  valid: boolean;
-  error?: string;
-}
+import { ImportStatus, UploadedFile } from './types';
+import { ACCEPTED_FILE_TYPES, BATCH_SIZES } from './constants';
+import { processFiles, readLargeFileForImport } from './fileUtils';
+import { transformSqlWithPcrmSuffix, splitSqlIntoStatements } from './sqlUtils';
+import { processSqlInBatches } from './importService';
 
 export const FileUploadImportCard = () => {
   const [importStatus, setImportStatus] = useState<ImportStatus>({
@@ -37,102 +26,12 @@ export const FileUploadImportCard = () => {
     setImportStatus(prev => ({ ...prev, ...update }));
   };
 
-  const detectFileType = (fileName: string, content: string): 'schema' | 'data' | 'unknown' => {
-    const lowerName = fileName.toLowerCase();
-    const upperContent = content.toUpperCase();
-    
-    if (lowerName.includes('schema') || upperContent.includes('CREATE TABLE')) {
-      return 'schema';
-    }
-    if (lowerName.includes('data') || upperContent.includes('INSERT INTO')) {
-      return 'data';
-    }
-    return 'unknown';
-  };
-
-  const validateSqlContent = (content: string, isPartialContent: boolean = false): { valid: boolean; error?: string } => {
-    if (!content || content.trim().length === 0) {
-      return { valid: false, error: 'File is empty' };
-    }
-    
-    // Basic SQL validation
-    const sqlKeywords = ['CREATE', 'INSERT', 'UPDATE', 'DELETE', 'SELECT', 'ALTER', 'DROP'];
-    const upperContent = content.toUpperCase();
-    const hasSqlKeywords = sqlKeywords.some(keyword => upperContent.includes(keyword));
-    
-    if (!hasSqlKeywords) {
-      const errorMsg = isPartialContent 
-        ? 'File sample does not contain SQL statements (first 10KB checked)'
-        : 'File does not contain valid SQL statements';
-      return { valid: false, error: errorMsg };
-    }
-    
-    return { valid: true };
-  };
-
-  const readFileContent = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      
-      // For large files (>100MB), only read first 10KB for validation
-      const isLargeFile = file.size > 100 * 1024 * 1024; // 100MB
-      const chunk = isLargeFile ? file.slice(0, 10 * 1024) : file; // First 10KB or full file
-      
-      reader.onload = (e) => {
-        const content = e.target?.result as string;
-        resolve(content);
-      };
-      reader.onerror = () => reject(new Error('Failed to read file'));
-      reader.readAsText(chunk);
-    });
-  };
-
-  const processFiles = async (files: File[]) => {
-    updateStatus({
-      step: 'reading-files',
-      progress: 10,
-      message: 'Reading and validating files...'
-    });
-
-    const processedFiles: UploadedFile[] = [];
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      
-      try {
-        const content = await readFileContent(file);
-        const isLargeFile = file.size > 100 * 1024 * 1024; // 100MB
-        const validation = validateSqlContent(content, isLargeFile);
-        const type = detectFileType(file.name, content);
-        
-        processedFiles.push({
-          file,
-          type,
-          content: isLargeFile ? undefined : content, // Don't store full content for large files
-          valid: validation.valid,
-          error: validation.error
-        });
-        
-        updateStatus({
-          progress: 10 + ((i + 1) / files.length) * 20,
-          message: `Processed ${i + 1} of ${files.length} files...`
-        });
-      } catch (error) {
-        processedFiles.push({
-          file,
-          type: 'unknown',
-          valid: false,
-          error: error instanceof Error ? error.message : 'Failed to read file'
-        });
-      }
-    }
-
-    setUploadedFiles(processedFiles);
-    updateStatus({
-      step: 'validating',
-      progress: 30,
-      message: 'Files processed. Review and start import.'
-    });
+  const updateProgress = (progress: number, message?: string) => {
+    setImportStatus(prev => ({ 
+      ...prev, 
+      progress, 
+      ...(message && { message }) 
+    }));
   };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -152,122 +51,38 @@ export const FileUploadImportCard = () => {
       return;
     }
     
-    processFiles(files);
+    handleFileProcessing(files);
   }, [toast]);
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {
-      processFiles(files);
+      handleFileProcessing(files);
     }
   };
 
-  const executeSQL = async (sql: string, description: string): Promise<boolean> => {
+  const handleFileProcessing = async (files: File[]) => {
+    updateStatus({
+      step: 'reading-files',
+      progress: 10,
+      message: 'Reading and validating files...'
+    });
+
     try {
-      const { data, error } = await supabase.rpc('execute_sql', { 
-        sql_statement: sql 
+      const processedFiles = await processFiles(files, updateProgress);
+      setUploadedFiles(processedFiles);
+      updateStatus({
+        step: 'validating',
+        progress: 30,
+        message: 'Files processed. Review and start import.'
       });
-
-      if (error) {
-        console.error(`${description} error:`, error);
-        updateStatus({ 
-          step: 'error', 
-          error: `${description} failed: ${error.message}` 
-        });
-        return false;
-      }
-
-      const result = data as { success: boolean; error?: string } | null;
-      
-      if (result && !result.success) {
-        console.error(`${description} execution error:`, result.error);
-        updateStatus({ 
-          step: 'error', 
-          error: `${description} failed: ${result.error || 'Unknown database error'}` 
-        });
-        return false;
-      }
-
-      return true;
     } catch (error) {
-      console.error(`${description} exception:`, error);
-      updateStatus({ 
-        step: 'error', 
-        error: `${description} failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      updateStatus({
+        step: 'error',
+        error: error instanceof Error ? error.message : 'Failed to process files',
+        message: 'File processing failed'
       });
-      return false;
     }
-  };
-
-  const processSqlInBatches = async (sql: string, description: string, batchSize: number = 50): Promise<boolean> => {
-    const statements = sql
-      .split(';')
-      .map(stmt => stmt.trim())
-      .filter(stmt => stmt.length > 0 && !stmt.toLowerCase().startsWith('--'));
-
-    const totalStatements = statements.length;
-    let processedStatements = 0;
-
-    for (let i = 0; i < statements.length; i += batchSize) {
-      const batch = statements.slice(i, i + batchSize);
-      const batchSql = batch.join(';\n') + ';';
-
-      const success = await executeSQL(batchSql, `${description} (batch ${Math.floor(i / batchSize) + 1})`);
-      if (!success) return false;
-
-      processedStatements += batch.length;
-      const progress = Math.min(90, (processedStatements / totalStatements) * 100);
-      
-      if (importStatus.step === 'importing-schema') {
-        updateStatus({ progress: 40 + (progress * 0.25) });
-      } else if (importStatus.step === 'importing-data') {
-        updateStatus({ progress: 70 + (progress * 0.25) });
-      }
-
-      // Small delay to prevent overwhelming the database
-      if (i + batchSize < statements.length) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-    }
-
-    return true;
-  };
-
-  const transformSqlWithPcrmSuffix = (sqlContent: string): string => {
-    // Transform CREATE TABLE statements
-    let transformedSql = sqlContent.replace(
-      /CREATE TABLE\s+([`"]?)(\w+)\1/gi,
-      (match, quote, tableName) => {
-        if (tableName.toLowerCase().endsWith('_pcrm')) {
-          return match; // Already has suffix
-        }
-        return `CREATE TABLE ${quote}${tableName}_PCRM${quote}`;
-      }
-    );
-
-    // Transform INSERT INTO statements
-    transformedSql = transformedSql.replace(
-      /INSERT INTO\s+([`"]?)(\w+)\1/gi,
-      (match, quote, tableName) => {
-        if (tableName.toLowerCase().endsWith('_pcrm')) {
-          return match; // Already has suffix
-        }
-        return `INSERT INTO ${quote}${tableName}_PCRM${quote}`;
-      }
-    );
-
-    // Transform REFERENCES in foreign keys
-    transformedSql = transformedSql.replace(
-      /REFERENCES\s+([`"]?)(\w+)\1/gi,
-      (match, quote, tableName) => {
-        if (tableName.toLowerCase().endsWith('_pcrm')) {
-          return match; // Already has suffix
-        }
-        return `REFERENCES ${quote}${tableName}_PCRM${quote}`;
-      }
-    );
-
-    return transformedSql;
   };
 
   const handleTestSchema = async () => {
@@ -289,13 +104,9 @@ export const FileUploadImportCard = () => {
         message: 'Testing schema parsing and transformation...'
       });
 
-      const transformedSchema = transformSqlWithPcrmSuffix(schemaFile.content!);
-      
-      // Count statements for feedback
-      const statements = transformedSchema
-        .split(';')
-        .map(stmt => stmt.trim())
-        .filter(stmt => stmt.length > 0 && !stmt.toLowerCase().startsWith('--'));
+      const schemaContent = schemaFile.content || await readLargeFileForImport(schemaFile.file);
+      const transformedSchema = transformSqlWithPcrmSuffix(schemaContent);
+      const statements = splitSqlIntoStatements(transformedSchema);
 
       updateStatus({
         step: 'complete',
@@ -324,18 +135,6 @@ export const FileUploadImportCard = () => {
     }
   };
 
-  const readLargeFileForImport = async (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const content = e.target?.result as string;
-        resolve(content);
-      };
-      reader.onerror = () => reject(new Error('Failed to read large file'));
-      reader.readAsText(file);
-    });
-  };
-
   const handleImport = async () => {
     const schemaFile = uploadedFiles.find(f => f.type === 'schema' && f.valid);
     const dataFile = uploadedFiles.find(f => f.type === 'data' && f.valid);
@@ -359,9 +158,22 @@ export const FileUploadImportCard = () => {
 
       const schemaContent = schemaFile.content || await readLargeFileForImport(schemaFile.file);
       const transformedSchema = transformSqlWithPcrmSuffix(schemaContent);
-      const schemaSuccess = await processSqlInBatches(transformedSchema, 'Schema import');
+      const schemaSuccess = await processSqlInBatches(
+        transformedSchema, 
+        'Schema import', 
+        BATCH_SIZES.SCHEMA_IMPORT,
+        updateProgress,
+        'importing-schema'
+      );
       
-      if (!schemaSuccess) return;
+      if (!schemaSuccess) {
+        updateStatus({
+          step: 'error',
+          error: 'Schema import failed',
+          message: 'Import failed'
+        });
+        return;
+      }
 
       // Import data
       updateStatus({
@@ -372,9 +184,22 @@ export const FileUploadImportCard = () => {
 
       const dataContent = dataFile.content || await readLargeFileForImport(dataFile.file);
       const transformedData = transformSqlWithPcrmSuffix(dataContent);
-      const dataSuccess = await processSqlInBatches(transformedData, 'Data import', 10); // Smaller batches for large data
+      const dataSuccess = await processSqlInBatches(
+        transformedData, 
+        'Data import', 
+        BATCH_SIZES.DATA_IMPORT,
+        updateProgress,
+        'importing-data'
+      );
       
-      if (!dataSuccess) return;
+      if (!dataSuccess) {
+        updateStatus({
+          step: 'error',
+          error: 'Data import failed',
+          message: 'Import failed'
+        });
+        return;
+      }
 
       updateStatus({
         step: 'complete',
@@ -499,7 +324,7 @@ export const FileUploadImportCard = () => {
           <input
             type="file"
             multiple
-            accept=".sql"
+            accept={ACCEPTED_FILE_TYPES.join(',')}
             onChange={handleFileInput}
             className="hidden"
             id="file-upload"

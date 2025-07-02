@@ -1,6 +1,6 @@
 import React from 'react';
 import { Upload } from 'lucide-react';
-import { FileUploadImportCard } from './components/FileUploadImportCard';
+import { FileUploadImportCard } from './components/fileUpload';
 
 const MigrationDashboard = () => {
   return (
