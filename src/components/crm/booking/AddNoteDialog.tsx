@@ -43,7 +43,7 @@ const AddNoteDialog = ({
   const fetchNoteTypes = async () => {
     try {
       const { data, error } = await supabase
-        .from('note_types')
+        .from('note_types_prod')
         .select('*')
         .order('name');
 

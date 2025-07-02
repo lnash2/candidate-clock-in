@@ -28,7 +28,7 @@ export const useCustomers = () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('customers')
+        .from('customers_prod')
         .select('*')
         .order('company', { ascending: true });
 
@@ -45,7 +45,7 @@ export const useCustomers = () => {
   const createCustomer = async (customerData: Omit<Customer, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const { data, error } = await supabase
-        .from('customers')
+        .from('customers_prod')
         .insert([customerData])
         .select()
         .single();
@@ -72,7 +72,7 @@ export const useCustomers = () => {
   const updateCustomer = async (id: string, updates: Partial<Customer>) => {
     try {
       const { data, error } = await supabase
-        .from('customers')
+        .from('customers_prod')
         .update(updates)
         .eq('id', id)
         .select()
@@ -102,7 +102,7 @@ export const useCustomers = () => {
   const deleteCustomer = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('customers')
+        .from('customers_prod')
         .delete()
         .eq('id', id);
 

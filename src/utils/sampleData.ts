@@ -40,7 +40,7 @@ export const addSampleData = async () => {
     ];
 
     const { data: customers, error: customersError } = await supabase
-      .from('customers')
+      .from('customers_prod')
       .insert(customersData)
       .select();
 
@@ -76,7 +76,7 @@ export const addSampleData = async () => {
     ];
 
     const { data: candidatesResult, error: candidatesError } = await supabase
-      .from('candidates')
+      .from('candidates_prod')
       .insert(candidatesData)
       .select();
 
@@ -106,7 +106,7 @@ export const addSampleData = async () => {
     ];
 
     const { data: vehicles, error: vehiclesError } = await supabase
-      .from('vehicles')
+      .from('vehicles_prod')
       .insert(vehiclesData)
       .select();
 
@@ -145,7 +145,7 @@ export const addSampleData = async () => {
       ]);
 
       const { error: ratesError } = await supabase
-        .from('company_rates')
+        .from('company_rates_prod')
         .insert(ratesData);
 
       if (ratesError) {

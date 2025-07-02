@@ -31,7 +31,7 @@ export const useCandidates = () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('candidates')
+        .from('candidates_prod')
         .select('*')
         .order('candidate_name', { ascending: true });
 
@@ -48,7 +48,7 @@ export const useCandidates = () => {
   const createCandidate = async (candidateData: Omit<Candidate, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const { data, error } = await supabase
-        .from('candidates')
+        .from('candidates_prod')
         .insert([candidateData])
         .select()
         .single();
@@ -75,7 +75,7 @@ export const useCandidates = () => {
   const updateCandidate = async (id: string, updates: Partial<Candidate>) => {
     try {
       const { data, error } = await supabase
-        .from('candidates')
+        .from('candidates_prod')
         .update(updates)
         .eq('id', id)
         .select()
@@ -105,7 +105,7 @@ export const useCandidates = () => {
   const deleteCandidate = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('candidates')
+        .from('candidates_prod')
         .delete()
         .eq('id', id);
 

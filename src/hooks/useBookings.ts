@@ -48,19 +48,19 @@ export const useBookings = () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('bookings')
+        .from('bookings_prod')
         .select(`
           *,
-          customers (
+          customers_prod (
             id,
             company,
             contact_name
           ),
-          candidates (
+          candidates_prod (
             id,
             candidate_name
           ),
-          vehicles (
+          vehicles_prod (
             id,
             truck_registration,
             model
@@ -81,20 +81,20 @@ export const useBookings = () => {
   const createBooking = async (bookingData: Omit<Booking, 'id' | 'created_at' | 'updated_at' | 'customers' | 'candidates' | 'vehicles'>) => {
     try {
       const { data, error } = await supabase
-        .from('bookings')
+        .from('bookings_prod')
         .insert([bookingData])
         .select(`
           *,
-          customers (
+          customers_prod (
             id,
             company,
             contact_name
           ),
-          candidates (
+          candidates_prod (
             id,
             candidate_name
           ),
-          vehicles (
+          vehicles_prod (
             id,
             truck_registration,
             model
@@ -124,21 +124,21 @@ export const useBookings = () => {
   const updateBooking = async (id: string, updates: Partial<Booking>) => {
     try {
       const { data, error } = await supabase
-        .from('bookings')
+        .from('bookings_prod')
         .update(updates)
         .eq('id', id)
         .select(`
           *,
-          customers (
+          customers_prod (
             id,
             company,
             contact_name
           ),
-          candidates (
+          candidates_prod (
             id,
             candidate_name
           ),
-          vehicles (
+          vehicles_prod (
             id,
             truck_registration,
             model
@@ -170,7 +170,7 @@ export const useBookings = () => {
   const deleteBooking = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('bookings')
+        .from('bookings_prod')
         .delete()
         .eq('id', id);
 

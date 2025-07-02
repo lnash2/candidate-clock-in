@@ -29,7 +29,7 @@ const Settings = () => {
   const fetchNoteTypes = async () => {
     try {
       const { data, error } = await supabase
-        .from('note_types')
+        .from('note_types_prod')
         .select('*')
         .order('name');
 
@@ -60,7 +60,7 @@ const Settings = () => {
   const handleDeleteNoteType = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('note_types')
+        .from('note_types_prod')
         .delete()
         .eq('id', id);
 
@@ -86,7 +86,7 @@ const Settings = () => {
       if (editingNoteType) {
         // Update existing note type
         const { data, error } = await supabase
-          .from('note_types')
+          .from('note_types_prod')
           .update({ name, color })
           .eq('id', editingNoteType.id)
           .select()
@@ -104,7 +104,7 @@ const Settings = () => {
       } else {
         // Create new note type
         const { data, error } = await supabase
-          .from('note_types')
+          .from('note_types_prod')
           .insert([{ name, color }])
           .select()
           .single();

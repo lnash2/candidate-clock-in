@@ -9,7 +9,7 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      bookings: {
+      bookings_prod: {
         Row: {
           booking_type: string | null
           candidate_id: string | null
@@ -72,26 +72,26 @@ export type Database = {
             foreignKeyName: "bookings_candidate_id_fkey"
             columns: ["candidate_id"]
             isOneToOne: false
-            referencedRelation: "candidates"
+            referencedRelation: "candidates_prod"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "bookings_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
-            referencedRelation: "customers"
+            referencedRelation: "customers_prod"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "bookings_vehicle_id_fkey"
             columns: ["vehicle_id"]
             isOneToOne: false
-            referencedRelation: "vehicles"
+            referencedRelation: "vehicles_prod"
             referencedColumns: ["id"]
           },
         ]
       }
-      candidates: {
+      candidates_prod: {
         Row: {
           active_status: string | null
           address: string | null
@@ -175,7 +175,7 @@ export type Database = {
         }
         Relationships: []
       }
-      company_rates: {
+      company_rates_prod: {
         Row: {
           charge_rate: number
           created_at: string
@@ -223,12 +223,12 @@ export type Database = {
             foreignKeyName: "company_rates_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
-            referencedRelation: "customers"
+            referencedRelation: "customers_prod"
             referencedColumns: ["id"]
           },
         ]
       }
-      customers: {
+      customers_prod: {
         Row: {
           address: string | null
           business_type: string | null
@@ -288,7 +288,7 @@ export type Database = {
         }
         Relationships: []
       }
-      id_mappings: {
+      id_mappings_prod: {
         Row: {
           created_at: string
           id: string
@@ -312,7 +312,7 @@ export type Database = {
         }
         Relationships: []
       }
-      legacy_import_log: {
+      legacy_import_log_prod: {
         Row: {
           created_at: string
           error_message: string | null
@@ -339,7 +339,7 @@ export type Database = {
         }
         Relationships: []
       }
-      migration_status: {
+      migration_status_prod: {
         Row: {
           completed_at: string | null
           created_at: string
@@ -378,7 +378,7 @@ export type Database = {
         }
         Relationships: []
       }
-      note_types: {
+      note_types_prod: {
         Row: {
           color: string
           created_at: string
@@ -399,7 +399,7 @@ export type Database = {
         }
         Relationships: []
       }
-      vehicles: {
+      vehicles_prod: {
         Row: {
           created_at: string
           fuel_type: string | null
@@ -465,7 +465,7 @@ export type Database = {
         }
         Relationships: []
       }
-      work_locations: {
+      work_locations_prod: {
         Row: {
           address_line_1: string | null
           address_line_2: string | null
@@ -525,7 +525,7 @@ export type Database = {
             foreignKeyName: "work_locations_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
-            referencedRelation: "customers"
+            referencedRelation: "customers_prod"
             referencedColumns: ["id"]
           },
         ]

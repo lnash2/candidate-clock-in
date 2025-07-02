@@ -93,7 +93,7 @@ const ComprehensiveBookingForm = ({ onSubmit, onCancel, initialData }: Comprehen
 
       // Fetch candidates
       const { data: candidatesData, error: candidatesError } = await supabase
-        .from('candidates')
+        .from('candidates_prod')
         .select('*')
         .eq('active_status', 'Active')
         .order('candidate_name');
@@ -102,7 +102,7 @@ const ComprehensiveBookingForm = ({ onSubmit, onCancel, initialData }: Comprehen
 
       // Fetch customers
       const { data: customersData, error: customersError } = await supabase
-        .from('customers')
+        .from('customers_prod')
         .select('*')
         .order('company');
 
@@ -110,7 +110,7 @@ const ComprehensiveBookingForm = ({ onSubmit, onCancel, initialData }: Comprehen
 
       // Fetch company rates
       const { data: ratesData, error: ratesError } = await supabase
-        .from('company_rates')
+        .from('company_rates_prod')
         .select('*')
         .eq('is_active', true);
 
@@ -134,7 +134,7 @@ const ComprehensiveBookingForm = ({ onSubmit, onCancel, initialData }: Comprehen
   const fetchWorkLocations = async (customerId: string) => {
     try {
       const { data, error } = await supabase
-        .from('work_locations')
+        .from('work_locations_prod')
         .select('*')
         .eq('customer_id', customerId)
         .eq('is_active', true)

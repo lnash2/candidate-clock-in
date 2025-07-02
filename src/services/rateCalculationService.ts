@@ -26,7 +26,7 @@ export class RateCalculationService {
       
       // Find customer-specific rate
       const { data: companyRates, error } = await supabase
-        .from('company_rates')
+        .from('company_rates_prod')
         .select('*')
         .eq('customer_id', customerId)
         .eq('driver_class', driverClass)
@@ -125,7 +125,7 @@ export class RateCalculationService {
   static async getAvailableDriverClasses(customerId?: string): Promise<string[]> {
     try {
       let query = supabase
-        .from('company_rates')
+        .from('company_rates_prod')
         .select('driver_class')
         .eq('is_active', true);
 

@@ -91,9 +91,9 @@ const RefactoredBookingForm = ({ onSubmit, onCancel, initialData }: RefactoredBo
       setIsLoading(true);
 
       const [candidatesRes, customersRes, ratesRes] = await Promise.all([
-        supabase.from('candidates').select('*').eq('active_status', 'Active').order('candidate_name'),
-        supabase.from('customers').select('*').order('company'),
-        supabase.from('company_rates').select('*').eq('is_active', true)
+        supabase.from('candidates_prod').select('*').eq('active_status', 'Active').order('candidate_name'),
+        supabase.from('customers_prod').select('*').order('company'),
+        supabase.from('company_rates_prod').select('*').eq('is_active', true)
       ]);
 
       if (candidatesRes.error) throw candidatesRes.error;
@@ -118,7 +118,7 @@ const RefactoredBookingForm = ({ onSubmit, onCancel, initialData }: RefactoredBo
   const fetchWorkLocations = async (customerId: string) => {
     try {
       const { data, error } = await supabase
-        .from('work_locations')
+        .from('work_locations_prod')
         .select('*')
         .eq('customer_id', customerId)
         .eq('is_active', true)
