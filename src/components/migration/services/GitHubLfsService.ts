@@ -139,9 +139,10 @@ export class GitHubLfsService {
         console.log(`✅ Regular file detected, decoding base64 content`);
         const content = atob(data.content.replace(/\s/g, ''));
         
-        // Validate it's SQL content
+        // Validate it's SQL content - if it's an LFS pointer, try raw endpoint
         if (!this.isValidSqlContent(content, filePath)) {
-          console.warn(`⚠️ File doesn't appear to contain valid SQL content`);
+          console.warn(`⚠️ Contents API returned LFS pointer or invalid SQL, trying raw endpoint...`);
+          return await this.fetchFromRawEndpoint(repoOwner, repoName, filePath, branch);
         }
         
         console.log(`✅ Successfully fetched ${content.length} characters from Contents API`);
@@ -189,9 +190,13 @@ export class GitHubLfsService {
 
       const content = await rawResponse.text();
       
-      // Validate it's SQL content
+      // Validate it's SQL content - if it's still an LFS pointer, return error
       if (!this.isValidSqlContent(content, filePath)) {
-        console.warn(`⚠️ Raw endpoint content doesn't appear to be valid SQL`);
+        if (content.includes('version https://git-lfs.github.com/spec/v1')) {
+          throw new Error(`File ${filePath} is stored in Git LFS and cannot be accessed directly. Please download the actual SQL file or use a repository without LFS.`);
+        } else {
+          throw new Error(`File ${filePath} does not contain valid SQL content.`);
+        }
       }
       
       console.log(`✅ Successfully fetched ${content.length} characters from raw endpoint`);
