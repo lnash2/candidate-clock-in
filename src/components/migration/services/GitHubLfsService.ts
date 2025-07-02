@@ -104,23 +104,47 @@ export class GitHubLfsService {
   }
 
   static async fetchLfsFile(repoOwner: string, repoName: string, filePath: string, branch: string = 'main'): Promise<GitHubLfsResponse> {
-    try {
-      // First, try to get the file content directly from GitHub API
-      const response = await fetch(
-        `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}?ref=${branch}`,
-        { headers: this.getHeaders() }
-      );
+    const requestUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}?ref=${branch}`;
+    console.log(`🔍 Fetching file: ${filePath} from ${repoOwner}/${repoName}@${branch}`);
+    console.log(`📡 Request URL: ${requestUrl}`);
 
+    try {
+      // First attempt: GitHub Contents API
+      const response = await this.fetchWithRetry(requestUrl, { headers: this.getHeaders() });
+      
       if (!response.ok) {
-        throw new Error(`Failed to fetch file: ${response.statusText}`);
+        const errorDetails = await this.getDetailedError(response);
+        console.error(`❌ Contents API failed (${response.status}):`, errorDetails);
+        
+        // If it's a rate limit, throw immediately
+        if (response.status === 403) {
+          throw new Error(`GitHub API rate limit exceeded. Status: ${response.status}. ${errorDetails}`);
+        }
+        
+        // For other errors, try raw endpoint as fallback
+        console.log(`🔄 Trying raw endpoint fallback...`);
+        return await this.fetchFromRawEndpoint(repoOwner, repoName, filePath, branch);
       }
 
       const data = await response.json();
+      console.log(`📊 File metadata:`, {
+        name: data.name,
+        size: data.size,
+        encoding: data.encoding,
+        hasContent: !!data.content
+      });
       
       // Check if this is a regular file (not LFS)
       if (data.content && data.encoding === 'base64') {
-        // This is a regular file, decode the base64 content
+        console.log(`✅ Regular file detected, decoding base64 content`);
         const content = atob(data.content.replace(/\s/g, ''));
+        
+        // Validate it's SQL content
+        if (!this.isValidSqlContent(content, filePath)) {
+          console.warn(`⚠️ File doesn't appear to contain valid SQL content`);
+        }
+        
+        console.log(`✅ Successfully fetched ${content.length} characters from Contents API`);
         return {
           success: true,
           content,
@@ -128,28 +152,135 @@ export class GitHubLfsService {
         };
       }
       
-      // If no content, might be LFS - try the raw endpoint
-      const rawResponse = await fetch(
-        `https://github.com/${repoOwner}/${repoName}/raw/${branch}/${filePath}`
-      );
+      // If no content in response, it might be LFS - try raw endpoint
+      console.log(`🔄 No content in Contents API response, trying raw endpoint...`);
+      return await this.fetchFromRawEndpoint(repoOwner, repoName, filePath, branch);
+      
+    } catch (error) {
+      console.error('💥 GitHub file fetch error:', error);
+      
+      // Provide detailed error message
+      let errorMessage = 'Unknown error occurred';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      return {
+        success: false,
+        error: `Failed to fetch ${filePath}: ${errorMessage}`
+      };
+    }
+  }
 
+  private static async fetchFromRawEndpoint(repoOwner: string, repoName: string, filePath: string, branch: string): Promise<GitHubLfsResponse> {
+    const rawUrl = `https://github.com/${repoOwner}/${repoName}/raw/${branch}/${filePath}`;
+    console.log(`📡 Raw endpoint URL: ${rawUrl}`);
+    
+    try {
+      const rawResponse = await this.fetchWithRetry(rawUrl);
+      
       if (!rawResponse.ok) {
-        throw new Error(`Failed to fetch raw content: ${rawResponse.statusText}`);
+        const errorDetails = await this.getDetailedError(rawResponse);
+        console.error(`❌ Raw endpoint failed (${rawResponse.status}):`, errorDetails);
+        throw new Error(`Raw endpoint failed: ${rawResponse.status} - ${errorDetails}`);
       }
 
       const content = await rawResponse.text();
+      
+      // Validate it's SQL content
+      if (!this.isValidSqlContent(content, filePath)) {
+        console.warn(`⚠️ Raw endpoint content doesn't appear to be valid SQL`);
+      }
+      
+      console.log(`✅ Successfully fetched ${content.length} characters from raw endpoint`);
       return {
         success: true,
         content,
         size: content.length
       };
     } catch (error) {
-      console.error('GitHub file fetch error:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
-      };
+      console.error('💥 Raw endpoint fetch error:', error);
+      throw error;
     }
+  }
+
+  private static async fetchWithRetry(url: string, options?: RequestInit, maxRetries: number = 3): Promise<Response> {
+    let lastError: Error | null = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔄 Attempt ${attempt}/${maxRetries} for: ${url}`);
+        
+        const response = await fetch(url, {
+          ...options,
+          signal: AbortSignal.timeout(30000) // 30 second timeout
+        });
+        
+        // If rate limited, wait and retry
+        if (response.status === 403 && attempt < maxRetries) {
+          const waitTime = Math.pow(2, attempt) * 1000; // Exponential backoff
+          console.log(`⏳ Rate limited, waiting ${waitTime}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        }
+        
+        return response;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        console.error(`❌ Attempt ${attempt} failed:`, lastError.message);
+        
+        if (attempt < maxRetries) {
+          const waitTime = Math.pow(2, attempt) * 1000;
+          console.log(`⏳ Waiting ${waitTime}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+      }
+    }
+    
+    throw lastError || new Error('All retry attempts failed');
+  }
+
+  private static async getDetailedError(response: Response): Promise<string> {
+    try {
+      const text = await response.text();
+      if (text) {
+        // Try to parse as JSON for GitHub API errors
+        try {
+          const json = JSON.parse(text);
+          return json.message || json.error || text;
+        } catch {
+          return text;
+        }
+      }
+      return response.statusText || `HTTP ${response.status}`;
+    } catch {
+      return response.statusText || `HTTP ${response.status}`;
+    }
+  }
+
+  private static isValidSqlContent(content: string, filePath: string): boolean {
+    if (!content || content.trim().length === 0) {
+      return false;
+    }
+    
+    // Check if it's a Git LFS pointer
+    if (content.includes('version https://git-lfs.github.com/spec/v1')) {
+      console.log(`📋 Detected Git LFS pointer in ${filePath}`);
+      return false;
+    }
+    
+    // Basic SQL validation
+    const sqlKeywords = ['CREATE', 'INSERT', 'UPDATE', 'DELETE', 'SELECT', 'ALTER', 'DROP'];
+    const upperContent = content.toUpperCase();
+    const hasSqlKeywords = sqlKeywords.some(keyword => upperContent.includes(keyword));
+    
+    if (!hasSqlKeywords) {
+      console.log(`⚠️ No SQL keywords found in ${filePath}`);
+    }
+    
+    return hasSqlKeywords;
   }
 
   private static parseLfsPointer(content: string): LfsPointer | null {
