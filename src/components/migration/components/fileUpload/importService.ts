@@ -2,7 +2,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { ImportStatus } from './types';
 import { splitSqlIntoStatements } from './sqlUtils';
 
-export const executeSQL = async (sql: string, description: string): Promise<boolean> => {
+export interface ImportResult {
+  success: boolean;
+  error?: string;
+  statementsExecuted: number;
+  totalStatements: number;
+  failedStatement?: string;
+}
+
+export const executeSQL = async (sql: string, description: string): Promise<{ success: boolean; error?: string }> => {
   try {
     const { data, error } = await supabase.rpc('execute_sql', { 
       sql_statement: sql 
@@ -10,55 +18,92 @@ export const executeSQL = async (sql: string, description: string): Promise<bool
 
     if (error) {
       console.error(`${description} error:`, error);
-      return false;
+      return { success: false, error: error.message };
     }
 
     const result = data as { success: boolean; error?: string } | null;
     
     if (result && !result.success) {
       console.error(`${description} execution error:`, result.error);
-      return false;
+      return { success: false, error: result.error };
     }
 
-    return true;
+    return { success: true };
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     console.error(`${description} exception:`, error);
-    return false;
+    return { success: false, error: errorMessage };
   }
+};
+
+export const executeSingleStatement = async (
+  statement: string, 
+  statementIndex: number,
+  description: string
+): Promise<{ success: boolean; error?: string }> => {
+  console.log(`Executing statement ${statementIndex + 1}: ${statement.substring(0, 100)}...`);
+  
+  const result = await executeSQL(statement, `${description} - Statement ${statementIndex + 1}`);
+  
+  if (!result.success) {
+    console.error(`Failed statement ${statementIndex + 1}:`, statement);
+    console.error('Error:', result.error);
+  }
+  
+  return result;
 };
 
 export const processSqlInBatches = async (
   sql: string, 
   description: string, 
   batchSize: number,
-  updateProgress: (progress: number) => void,
+  updateProgress: (progress: number, message?: string) => void,
   currentStep: 'importing-schema' | 'importing-data'
-): Promise<boolean> => {
+): Promise<ImportResult> => {
   const statements = splitSqlIntoStatements(sql);
   const totalStatements = statements.length;
   let processedStatements = 0;
+  
+  console.log(`Starting ${description}: ${totalStatements} statements to process`);
 
-  for (let i = 0; i < statements.length; i += batchSize) {
-    const batch = statements.slice(i, i + batchSize);
-    const batchSql = batch.join(';\n') + ';';
-
-    const success = await executeSQL(batchSql, `${description} (batch ${Math.floor(i / batchSize) + 1})`);
-    if (!success) return false;
-
-    processedStatements += batch.length;
-    const progress = Math.min(90, (processedStatements / totalStatements) * 100);
+  // Process statements one by one for better error reporting
+  for (let i = 0; i < statements.length; i++) {
+    const statement = statements[i];
     
-    if (currentStep === 'importing-schema') {
-      updateProgress(40 + (progress * 0.25));
-    } else if (currentStep === 'importing-data') {
-      updateProgress(70 + (progress * 0.25));
+    // Update progress with current statement info
+    const progressMessage = `Processing statement ${i + 1} of ${totalStatements}: ${statement.substring(0, 50)}...`;
+    updateProgress(
+      currentStep === 'importing-schema' 
+        ? 40 + ((i / totalStatements) * 25)
+        : 70 + ((i / totalStatements) * 25),
+      progressMessage
+    );
+    
+    const result = await executeSingleStatement(statement, i, description);
+    
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error,
+        statementsExecuted: i,
+        totalStatements,
+        failedStatement: statement
+      };
     }
-
+    
+    processedStatements++;
+    
     // Small delay to prevent overwhelming the database
-    if (i + batchSize < statements.length) {
-      await new Promise(resolve => setTimeout(resolve, 100));
+    if (i < statements.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 50));
     }
   }
 
-  return true;
+  console.log(`Completed ${description}: ${processedStatements} statements executed successfully`);
+  
+  return {
+    success: true,
+    statementsExecuted: processedStatements,
+    totalStatements
+  };
 };

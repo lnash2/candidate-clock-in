@@ -10,7 +10,7 @@ import { ImportStatus, UploadedFile } from './types';
 import { ACCEPTED_FILE_TYPES, BATCH_SIZES } from './constants';
 import { processFiles, readLargeFileForImport } from './fileUtils';
 import { transformSqlWithPcrmSuffix, splitSqlIntoStatements } from './sqlUtils';
-import { processSqlInBatches } from './importService';
+import { processSqlInBatches, ImportResult } from './importService';
 
 export const FileUploadImportCard = () => {
   const [importStatus, setImportStatus] = useState<ImportStatus>({
@@ -116,7 +116,7 @@ export const FileUploadImportCard = () => {
 
       toast({
         title: 'Schema Test Complete',
-        description: `Schema parsed successfully with _PCRM suffix transformation. Found ${statements.length} statements.`,
+        description: `Schema cleaned and parsed successfully! Found ${statements.length} valid SQL statements after removing PostgreSQL dump metadata.`,
       });
 
     } catch (error) {
@@ -158,7 +158,7 @@ export const FileUploadImportCard = () => {
 
       const schemaContent = schemaFile.content || await readLargeFileForImport(schemaFile.file);
       const transformedSchema = transformSqlWithPcrmSuffix(schemaContent);
-      const schemaSuccess = await processSqlInBatches(
+      const schemaResult = await processSqlInBatches(
         transformedSchema, 
         'Schema import', 
         BATCH_SIZES.SCHEMA_IMPORT,
@@ -166,14 +166,29 @@ export const FileUploadImportCard = () => {
         'importing-schema'
       );
       
-      if (!schemaSuccess) {
+      if (!schemaResult.success) {
+        const errorMsg = schemaResult.failedStatement 
+          ? `Schema import failed at statement ${schemaResult.statementsExecuted + 1}: ${schemaResult.error}\n\nFailed SQL: ${schemaResult.failedStatement.substring(0, 200)}...`
+          : `Schema import failed: ${schemaResult.error}`;
+        
         updateStatus({
           step: 'error',
-          error: 'Schema import failed',
-          message: 'Import failed'
+          error: errorMsg,
+          message: 'Schema import failed'
+        });
+        
+        toast({
+          title: 'Schema Import Failed',
+          description: `Failed after ${schemaResult.statementsExecuted} of ${schemaResult.totalStatements} statements`,
+          variant: 'destructive',
         });
         return;
       }
+
+      toast({
+        title: 'Schema Import Complete',
+        description: `Successfully imported ${schemaResult.statementsExecuted} schema statements`,
+      });
 
       // Import data
       updateStatus({
@@ -184,7 +199,7 @@ export const FileUploadImportCard = () => {
 
       const dataContent = dataFile.content || await readLargeFileForImport(dataFile.file);
       const transformedData = transformSqlWithPcrmSuffix(dataContent);
-      const dataSuccess = await processSqlInBatches(
+      const dataResult = await processSqlInBatches(
         transformedData, 
         'Data import', 
         BATCH_SIZES.DATA_IMPORT,
@@ -192,11 +207,21 @@ export const FileUploadImportCard = () => {
         'importing-data'
       );
       
-      if (!dataSuccess) {
+      if (!dataResult.success) {
+        const errorMsg = dataResult.failedStatement 
+          ? `Data import failed at statement ${dataResult.statementsExecuted + 1}: ${dataResult.error}\n\nFailed SQL: ${dataResult.failedStatement.substring(0, 200)}...`
+          : `Data import failed: ${dataResult.error}`;
+        
         updateStatus({
           step: 'error',
-          error: 'Data import failed',
-          message: 'Import failed'
+          error: errorMsg,
+          message: 'Data import failed'
+        });
+        
+        toast({
+          title: 'Data Import Failed',
+          description: `Failed after ${dataResult.statementsExecuted} of ${dataResult.totalStatements} statements`,
+          variant: 'destructive',
         });
         return;
       }

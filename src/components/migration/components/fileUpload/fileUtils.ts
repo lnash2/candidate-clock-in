@@ -1,5 +1,6 @@
 import { FILE_SIZE_LIMITS, SQL_KEYWORDS } from './constants';
 import { ValidationResult, UploadedFile } from './types';
+import { cleanPostgreSQLDump } from './sqlUtils';
 
 export const detectFileType = (fileName: string, content: string): 'schema' | 'data' | 'unknown' => {
   const lowerName = fileName.toLowerCase();
@@ -19,14 +20,21 @@ export const validateSqlContent = (content: string, isPartialContent: boolean = 
     return { valid: false, error: 'File is empty' };
   }
   
-  // Basic SQL validation
-  const upperContent = content.toUpperCase();
+  // Clean PostgreSQL dump content first
+  const cleanedContent = cleanPostgreSQLDump(content);
+  
+  if (!cleanedContent || cleanedContent.trim().length === 0) {
+    return { valid: false, error: 'File contains no valid SQL statements after cleaning PostgreSQL dump metadata' };
+  }
+  
+  // Basic SQL validation on cleaned content
+  const upperContent = cleanedContent.toUpperCase();
   const hasSqlKeywords = SQL_KEYWORDS.some(keyword => upperContent.includes(keyword));
   
   if (!hasSqlKeywords) {
     const errorMsg = isPartialContent 
-      ? 'File sample does not contain SQL statements (first 10KB checked)'
-      : 'File does not contain valid SQL statements';
+      ? 'File sample does not contain SQL statements (first 10KB checked, after PostgreSQL dump cleaning)'
+      : 'File does not contain valid SQL statements after PostgreSQL dump cleaning';
     return { valid: false, error: errorMsg };
   }
   
