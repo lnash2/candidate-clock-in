@@ -10,8 +10,6 @@ import BookingManagement from '@/components/crm/BookingManagement';
 import CommunicationTracking from '@/components/crm/CommunicationTracking';
 import RateManagement from '@/components/crm/RateManagement';
 import Settings from '@/components/crm/Settings';
-import DatabaseSetup from '@/components/setup/DatabaseSetup';
-import MigrationDashboard from '@/components/migration/MigrationDashboard';
 
 const CRMDashboard = () => {
   const [activeView, setActiveView] = useState('overview');
@@ -35,9 +33,9 @@ const CRMDashboard = () => {
       case 'settings':
         return <Settings />;
       case 'setup':
-        return <DatabaseSetup />;
+        return <div className="p-6">Database setup removed - use terminal migration instead</div>;
       case 'migration':
-        return <MigrationDashboard />;
+        return <div className="p-6">Migration tools removed - use terminal migration instead</div>;
       default:
         return <CRMOverview />;
     }
