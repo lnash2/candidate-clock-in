@@ -84,8 +84,8 @@ export const useImportActions = (
       const schemaContent = schemaFile.content || await readLargeFileForImport(schemaFile.file);
       const result = await importSqlToLegacySchema(schemaContent, {
         schemaName: 'legacy_pcrm',
-        dropIfExists: true,
-        continueOnError: false
+        dropIfExists: false, // Let PostgreSQL handle conflicts naturally
+        continueOnError: true // Continue on expected errors like "already exists"
       }, updateProgress);
       
       if (!result.success) {

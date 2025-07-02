@@ -24,7 +24,7 @@ const splitSqlStatements = (sql: string): string[] => {
     .filter(s => s.length > 0 && !s.match(/^--/)); // Remove empty and comment lines
 };
 
-// Basic SQL cleaning - only remove obvious PostgreSQL dump metadata
+// Minimal SQL cleaning - only remove obvious PostgreSQL dump metadata
 const cleanSqlForImport = (sql: string): string => {
   const lines = sql.split('\n');
   const cleanedLines: string[] = [];
@@ -35,8 +35,8 @@ const cleanSqlForImport = (sql: string): string => {
     // Skip empty lines and comments
     if (!trimmed || trimmed.startsWith('--')) continue;
     
-    // Skip common PostgreSQL dump metadata lines
-    if (trimmed.match(/^(SET|SELECT pg_catalog|\\|COPY.*FROM stdin)/i)) continue;
+    // Only skip the most obvious PostgreSQL dump metadata
+    if (trimmed.match(/^(SET\s+(client_encoding|standard_conforming_strings|check_function_bodies|xmloption|client_min_messages|row_security)|SELECT pg_catalog\.set_config|\\\\)/i)) continue;
     
     cleanedLines.push(line);
   }
@@ -131,7 +131,7 @@ export const importSqlToLegacySchema = async (
     }
   }
 
-  // Process each statement
+  // Process each statement with minimal intervention
   for (let i = 0; i < statements.length; i++) {
     const statement = statements[i];
     const progress = 20 + ((i / totalStatements) * 70);
@@ -145,45 +145,23 @@ export const importSqlToLegacySchema = async (
     }
 
     try {
-      // Add conflict handling for common cases
-      let processedStatement = statement;
-      
-      if (dropIfExists) {
-        // Add DROP IF EXISTS for CREATE statements
-        if (statement.match(/CREATE TABLE\s+(\w+)/i)) {
-          const match = statement.match(/CREATE TABLE\s+(\w+)/i);
-          if (match) {
-            const tableName = match[1];
-            processedStatement = `DROP TABLE IF EXISTS "${tableName}" CASCADE;\n${statement}`;
-          }
-        }
-        
-        if (statement.match(/CREATE TYPE\s+(\w+)/i)) {
-          const match = statement.match(/CREATE TYPE\s+(\w+)/i);
-          if (match) {
-            const typeName = match[1];
-            processedStatement = `DROP TYPE IF EXISTS "${typeName}" CASCADE;\n${statement}`;
-          }
-        }
-        
-        if (statement.match(/CREATE FUNCTION\s+(\w+)/i)) {
-          const match = statement.match(/CREATE FUNCTION\s+(\w+)/i);
-          if (match) {
-            const functionName = match[1];
-            processedStatement = `DROP FUNCTION IF EXISTS "${functionName}" CASCADE;\n${statement}`;
-          }
-        }
-      }
-
+      // Execute statement as-is without complex transformations
       const { data, error } = await supabase.rpc('execute_sql', {
-        sql_statement: processedStatement
+        sql_statement: statement
       });
 
       if (error) {
         const errorMsg = `Statement ${i + 1}: ${error.message}`;
-        errors.push(errorMsg);
         
-        if (!continueOnError) {
+        // Check if this is an expected "already exists" type error
+        const isExpectedError = error.message.includes('already exists') || 
+                               error.message.includes('does not exist') ||
+                               error.message.includes('permission denied');
+        
+        if (isExpectedError || continueOnError) {
+          console.warn(`Continuing after expected error in statement ${i + 1}:`, error.message);
+          errors.push(errorMsg);
+        } else {
           return {
             success: false,
             error: errorMsg,
@@ -193,15 +171,20 @@ export const importSqlToLegacySchema = async (
             schemaName
           };
         }
-        
-        console.warn(`Continuing after error in statement ${i + 1}:`, error.message);
       } else {
         const result = data as { success: boolean; error?: string } | null;
         if (result && !result.success) {
           const errorMsg = `Statement ${i + 1}: ${result.error}`;
-          errors.push(errorMsg);
           
-          if (!continueOnError) {
+          // Same logic for expected errors from the function result
+          const isExpectedError = (result.error || '').includes('already exists') || 
+                                 (result.error || '').includes('does not exist') ||
+                                 (result.error || '').includes('permission denied');
+          
+          if (isExpectedError || continueOnError) {
+            console.warn(`Continuing after expected error in statement ${i + 1}:`, result.error);
+            errors.push(errorMsg);
+          } else {
             return {
               success: false,
               error: errorMsg,
