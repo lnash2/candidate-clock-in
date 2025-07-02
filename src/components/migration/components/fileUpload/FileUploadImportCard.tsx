@@ -1,67 +1,34 @@
-import React, { useState, useCallback } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
-import { Upload, Database, FileText, CheckCircle, AlertCircle, Loader2, X } from 'lucide-react';
-import { ImportStatus, UploadedFile } from './types';
-import { ACCEPTED_FILE_TYPES, BATCH_SIZES } from './constants';
-import { processFiles, readLargeFileForImport } from './fileUtils';
-import { transformSqlWithPcrmSuffix, splitSqlIntoStatements } from './sqlUtils';
-import { processSqlInBatches, ImportResult } from './importService';
+import { Upload } from 'lucide-react';
+import { useImportStatus } from './hooks/useImportStatus';
+import { useFileUpload } from './hooks/useFileUpload';
+import { useImportActions } from './hooks/useImportActions';
+import { ImportStatusDisplay } from './components/ImportStatusDisplay';
+import { FileUploadArea } from './components/FileUploadArea';
+import { UploadedFilesList } from './components/UploadedFilesList';
+import { ImportButtons } from './components/ImportButtons';
 
 export const FileUploadImportCard = () => {
-  const [importStatus, setImportStatus] = useState<ImportStatus>({
-    step: 'idle',
-    progress: 0,
-    message: 'Ready to import SQL files directly'
-  });
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
-  const [isDragOver, setIsDragOver] = useState(false);
-  const { toast } = useToast();
+  const { importStatus, updateStatus, updateProgress } = useImportStatus();
+  
+  const {
+    uploadedFiles,
+    isDragOver,
+    setIsDragOver,
+    handleDrop,
+    handleFileInput,
+    removeFile
+  } = useFileUpload(updateProgress);
 
-  const updateStatus = (update: Partial<ImportStatus>) => {
-    setImportStatus(prev => ({ ...prev, ...update }));
-  };
+  const {
+    handleTestSchema,
+    handleImportSchemaOnly,
+    handleImportDataOnly,
+    handleImportBoth
+  } = useImportActions(uploadedFiles, updateStatus, updateProgress);
 
-  const updateProgress = (progress: number, message?: string) => {
-    setImportStatus(prev => ({ 
-      ...prev, 
-      progress, 
-      ...(message && { message }) 
-    }));
-  };
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    
-    const files = Array.from(e.dataTransfer.files).filter(file => 
-      file.name.toLowerCase().endsWith('.sql')
-    );
-    
-    if (files.length === 0) {
-      toast({
-        title: 'No SQL Files',
-        description: 'Please drop .sql files only',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    handleFileProcessing(files);
-  }, [toast]);
-
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length > 0) {
-      handleFileProcessing(files);
-    }
-  };
-
-  const handleFileProcessing = async (files: File[]) => {
+  const handleFileProcessingWrapper = async (files: File[]) => {
     updateStatus({
       step: 'reading-files',
       progress: 10,
@@ -69,8 +36,7 @@ export const FileUploadImportCard = () => {
     });
 
     try {
-      const processedFiles = await processFiles(files, updateProgress);
-      setUploadedFiles(processedFiles);
+      // This will be handled by useFileUpload hook
       updateStatus({
         step: 'validating',
         progress: 30,
@@ -85,363 +51,7 @@ export const FileUploadImportCard = () => {
     }
   };
 
-  const handleTestSchema = async () => {
-    const schemaFile = uploadedFiles.find(f => f.type === 'schema' && f.valid);
-
-    if (!schemaFile) {
-      toast({
-        title: 'No Schema File',
-        description: 'Please upload a valid schema SQL file first',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      updateStatus({
-        step: 'importing-schema',
-        progress: 40,
-        message: 'Testing schema parsing and transformation...'
-      });
-
-      const schemaContent = schemaFile.content || await readLargeFileForImport(schemaFile.file);
-      const transformedSchema = transformSqlWithPcrmSuffix(schemaContent);
-      const statements = splitSqlIntoStatements(transformedSchema);
-
-      updateStatus({
-        step: 'complete',
-        progress: 100,
-        message: `Schema parsed successfully! Found ${statements.length} SQL statements ready for import.`
-      });
-
-      toast({
-        title: 'Schema Test Complete',
-        description: `Schema cleaned and parsed successfully! Found ${statements.length} valid SQL statements after removing PostgreSQL dump metadata.`,
-      });
-
-    } catch (error) {
-      console.error('Schema test error:', error);
-      updateStatus({
-        step: 'error',
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
-        message: 'Schema test failed'
-      });
-
-      toast({
-        title: 'Schema Test Failed',
-        description: error instanceof Error ? error.message : 'Unknown error occurred',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleImportSchemaOnly = async () => {
-    const schemaFile = uploadedFiles.find(f => f.type === 'schema' && f.valid);
-
-    if (!schemaFile) {
-      toast({
-        title: 'No Schema File',
-        description: 'Please upload a valid schema SQL file first',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      updateStatus({
-        step: 'importing-schema',
-        progress: 40,
-        message: 'Importing schema with _PCRM suffix...'
-      });
-
-      const schemaContent = schemaFile.content || await readLargeFileForImport(schemaFile.file);
-      const transformedSchema = transformSqlWithPcrmSuffix(schemaContent);
-      const schemaResult = await processSqlInBatches(
-        transformedSchema, 
-        'Schema import', 
-        BATCH_SIZES.SCHEMA_IMPORT,
-        updateProgress,
-        'importing-schema'
-      );
-      
-      if (!schemaResult.success) {
-        const errorMsg = schemaResult.failedStatement 
-          ? `Schema import failed at statement ${schemaResult.statementsExecuted + 1}: ${schemaResult.error}\n\nFailed SQL: ${schemaResult.failedStatement.substring(0, 200)}...`
-          : `Schema import failed: ${schemaResult.error}`;
-        
-        updateStatus({
-          step: 'error',
-          error: errorMsg,
-          message: 'Schema import failed'
-        });
-        
-        toast({
-          title: 'Schema Import Failed',
-          description: `Failed after ${schemaResult.statementsExecuted} of ${schemaResult.totalStatements} statements`,
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      updateStatus({
-        step: 'complete',
-        progress: 100,
-        message: 'Schema import completed successfully!'
-      });
-
-      toast({
-        title: 'Schema Import Complete',
-        description: `Successfully imported ${schemaResult.statementsExecuted} schema statements with _PCRM suffix`,
-      });
-
-    } catch (error) {
-      console.error('Schema import error:', error);
-      updateStatus({
-        step: 'error',
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
-        message: 'Schema import failed'
-      });
-
-      toast({
-        title: 'Schema Import Failed',
-        description: error instanceof Error ? error.message : 'Unknown error occurred',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleImportDataOnly = async () => {
-    const dataFile = uploadedFiles.find(f => f.type === 'data' && f.valid);
-
-    if (!dataFile) {
-      toast({
-        title: 'No Data File',
-        description: 'Please upload a valid data SQL file first',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      updateStatus({
-        step: 'importing-data',
-        progress: 50,
-        message: 'Importing data with _PCRM suffix...'
-      });
-
-      const dataContent = dataFile.content || await readLargeFileForImport(dataFile.file);
-      const transformedData = transformSqlWithPcrmSuffix(dataContent);
-      const dataResult = await processSqlInBatches(
-        transformedData, 
-        'Data import', 
-        BATCH_SIZES.DATA_IMPORT,
-        updateProgress,
-        'importing-data'
-      );
-      
-      if (!dataResult.success) {
-        const errorMsg = dataResult.failedStatement 
-          ? `Data import failed at statement ${dataResult.statementsExecuted + 1}: ${dataResult.error}\n\nFailed SQL: ${dataResult.failedStatement.substring(0, 200)}...`
-          : `Data import failed: ${dataResult.error}`;
-        
-        updateStatus({
-          step: 'error',
-          error: errorMsg,
-          message: 'Data import failed'
-        });
-        
-        toast({
-          title: 'Data Import Failed',
-          description: `Failed after ${dataResult.statementsExecuted} of ${dataResult.totalStatements} statements`,
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      updateStatus({
-        step: 'complete',
-        progress: 100,
-        message: 'Data import completed successfully!'
-      });
-
-      toast({
-        title: 'Data Import Complete',
-        description: `Successfully imported ${dataResult.statementsExecuted} data statements with _PCRM suffix`,
-      });
-
-    } catch (error) {
-      console.error('Data import error:', error);
-      updateStatus({
-        step: 'error',
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
-        message: 'Data import failed'
-      });
-
-      toast({
-        title: 'Data Import Failed',
-        description: error instanceof Error ? error.message : 'Unknown error occurred',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleImport = async () => {
-    const schemaFile = uploadedFiles.find(f => f.type === 'schema' && f.valid);
-    const dataFile = uploadedFiles.find(f => f.type === 'data' && f.valid);
-
-    if (!schemaFile || !dataFile) {
-      toast({
-        title: 'Missing Files',
-        description: 'Please upload both schema and data SQL files',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      // Import schema
-      updateStatus({
-        step: 'importing-schema',
-        progress: 40,
-        message: 'Importing schema with _PCRM suffix...'
-      });
-
-      const schemaContent = schemaFile.content || await readLargeFileForImport(schemaFile.file);
-      const transformedSchema = transformSqlWithPcrmSuffix(schemaContent);
-      const schemaResult = await processSqlInBatches(
-        transformedSchema, 
-        'Schema import', 
-        BATCH_SIZES.SCHEMA_IMPORT,
-        updateProgress,
-        'importing-schema'
-      );
-      
-      if (!schemaResult.success) {
-        const errorMsg = schemaResult.failedStatement 
-          ? `Schema import failed at statement ${schemaResult.statementsExecuted + 1}: ${schemaResult.error}\n\nFailed SQL: ${schemaResult.failedStatement.substring(0, 200)}...`
-          : `Schema import failed: ${schemaResult.error}`;
-        
-        updateStatus({
-          step: 'error',
-          error: errorMsg,
-          message: 'Schema import failed'
-        });
-        
-        toast({
-          title: 'Schema Import Failed',
-          description: `Failed after ${schemaResult.statementsExecuted} of ${schemaResult.totalStatements} statements`,
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      toast({
-        title: 'Schema Import Complete',
-        description: `Successfully imported ${schemaResult.statementsExecuted} schema statements`,
-      });
-
-      // Import data
-      updateStatus({
-        step: 'importing-data',
-        progress: 70,
-        message: 'Reading and importing large data file with _PCRM suffix...'
-      });
-
-      const dataContent = dataFile.content || await readLargeFileForImport(dataFile.file);
-      const transformedData = transformSqlWithPcrmSuffix(dataContent);
-      const dataResult = await processSqlInBatches(
-        transformedData, 
-        'Data import', 
-        BATCH_SIZES.DATA_IMPORT,
-        updateProgress,
-        'importing-data'
-      );
-      
-      if (!dataResult.success) {
-        const errorMsg = dataResult.failedStatement 
-          ? `Data import failed at statement ${dataResult.statementsExecuted + 1}: ${dataResult.error}\n\nFailed SQL: ${dataResult.failedStatement.substring(0, 200)}...`
-          : `Data import failed: ${dataResult.error}`;
-        
-        updateStatus({
-          step: 'error',
-          error: errorMsg,
-          message: 'Data import failed'
-        });
-        
-        toast({
-          title: 'Data Import Failed',
-          description: `Failed after ${dataResult.statementsExecuted} of ${dataResult.totalStatements} statements`,
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      updateStatus({
-        step: 'complete',
-        progress: 100,
-        message: 'Import completed successfully!'
-      });
-
-      toast({
-        title: 'Import Complete',
-        description: 'SQL files imported successfully with _PCRM suffix applied to all tables.',
-      });
-
-    } catch (error) {
-      console.error('Import error:', error);
-      updateStatus({
-        step: 'error',
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
-        message: 'Import failed'
-      });
-
-      toast({
-        title: 'Import Failed',
-        description: error instanceof Error ? error.message : 'Unknown error occurred',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const removeFile = (index: number) => {
-    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const getStepIcon = (step: string) => {
-    switch (step) {
-      case 'idle':
-        return <Upload className="h-5 w-5" />;
-      case 'reading-files':
-      case 'validating':
-        return <FileText className="h-5 w-5" />;
-      case 'importing-schema':
-      case 'importing-data':
-        return <Database className="h-5 w-5" />;
-      case 'complete':
-        return <CheckCircle className="h-5 w-5 text-green-600" />;
-      case 'error':
-        return <AlertCircle className="h-5 w-5 text-red-600" />;
-      default:
-        return <Loader2 className="h-5 w-5 animate-spin" />;
-    }
-  };
-
-  const getStatusBadgeVariant = (step: string) => {
-    switch (step) {
-      case 'complete':
-        return 'default' as const;
-      case 'error':
-        return 'destructive' as const;
-      case 'idle':
-        return 'secondary' as const;
-      default:
-        return 'outline' as const;
-    }
-  };
-
   const isImporting = !['idle', 'validating', 'complete', 'error'].includes(importStatus.step);
-  const canImport = uploadedFiles.some(f => f.type === 'schema' && f.valid) && 
-                   uploadedFiles.some(f => f.type === 'data' && f.valid);
 
   return (
     <Card>
@@ -455,93 +65,19 @@ export const FileUploadImportCard = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {getStepIcon(importStatus.step)}
-            <span className="font-medium">Import Status</span>
-          </div>
-          <Badge variant={getStatusBadgeVariant(importStatus.step)}>
-            {importStatus.step.replace('-', ' ').toUpperCase()}
-          </Badge>
-        </div>
+        <ImportStatusDisplay importStatus={importStatus} />
 
-        {importStatus.progress > 0 && (
-          <div className="space-y-2">
-            <Progress value={importStatus.progress} className="w-full" />
-            <p className="text-sm text-muted-foreground">{importStatus.message}</p>
-          </div>
-        )}
-
-        {importStatus.error && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{importStatus.error}</AlertDescription>
-          </Alert>
-        )}
-
-        {/* File Upload Area */}
-        <div
-          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-            isDragOver ? 'border-primary bg-muted/50' : 'border-muted-foreground/25'
-          }`}
+        <FileUploadArea
+          isDragOver={isDragOver}
+          setIsDragOver={setIsDragOver}
           onDrop={handleDrop}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setIsDragOver(true);
-          }}
-          onDragLeave={() => setIsDragOver(false)}
-        >
-          <Upload className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="font-medium mb-2">Drop SQL files here</h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            Support for legacy_schema.sql and legacy_data.sql files
-          </p>
-          <input
-            type="file"
-            multiple
-            accept={ACCEPTED_FILE_TYPES.join(',')}
-            onChange={handleFileInput}
-            className="hidden"
-            id="file-upload"
-          />
-          <Button asChild variant="outline">
-            <label htmlFor="file-upload" className="cursor-pointer">
-              Choose Files
-            </label>
-          </Button>
-        </div>
+          onFileInput={handleFileInput}
+        />
 
-        {/* Uploaded Files List */}
-        {uploadedFiles.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="font-medium">Uploaded Files</h4>
-            {uploadedFiles.map((file, index) => (
-              <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  <FileText className="h-4 w-4" />
-                  <div>
-                    <p className="font-medium">{file.file.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {(file.file.size / 1024 / 1024).toFixed(2)} MB • {file.type}
-                    </p>
-                  </div>
-                  {file.valid ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <AlertCircle className="h-4 w-4 text-red-600" />
-                  )}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => removeFile(index)}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
+        <UploadedFilesList
+          uploadedFiles={uploadedFiles}
+          onRemoveFile={removeFile}
+        />
 
         {/* Import Information */}
         <div className="space-y-2">
@@ -554,95 +90,14 @@ export const FileUploadImportCard = () => {
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Button 
-            onClick={handleTestSchema}
-            disabled={isImporting || !uploadedFiles.some(f => f.type === 'schema' && f.valid)}
-            className="w-full"
-            variant="outline"
-            size="lg"
-          >
-            {isImporting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Testing Schema...
-              </>
-            ) : (
-              <>
-                <FileText className="mr-2 h-4 w-4" />
-                Test Schema Parsing
-              </>
-            )}
-          </Button>
-
-          <Button 
-            onClick={handleImportSchemaOnly}
-            disabled={isImporting || !uploadedFiles.some(f => f.type === 'schema' && f.valid)}
-            className="w-full"
-            variant="secondary"
-            size="lg"
-          >
-            {isImporting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Importing Schema...
-              </>
-            ) : (
-              <>
-                <Database className="mr-2 h-4 w-4" />
-                Import Schema Only
-              </>
-            )}
-          </Button>
-
-          <Button 
-            onClick={handleImportDataOnly}
-            disabled={isImporting || !uploadedFiles.some(f => f.type === 'data' && f.valid)}
-            className="w-full"
-            variant="secondary"
-            size="lg"
-          >
-            {isImporting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Importing Data...
-              </>
-            ) : (
-              <>
-                <Database className="mr-2 h-4 w-4" />
-                Import Data Only
-              </>
-            )}
-          </Button>
-
-          <Button 
-            onClick={handleImport}
-            disabled={isImporting || !canImport}
-            className="w-full"
-            size="lg"
-          >
-            {isImporting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Importing...
-              </>
-            ) : (
-              <>
-                <Database className="mr-2 h-4 w-4" />
-                Import Both (Schema + Data)
-              </>
-            )}
-          </Button>
-        </div>
-
-        {importStatus.step === 'complete' && (
-          <Alert>
-            <CheckCircle className="h-4 w-4" />
-            <AlertDescription>
-              Successfully imported SQL files with _PCRM suffix. You can now view the migrated data in your database.
-            </AlertDescription>
-          </Alert>
-        )}
+        <ImportButtons
+          uploadedFiles={uploadedFiles}
+          isImporting={isImporting}
+          onTestSchema={handleTestSchema}
+          onImportSchemaOnly={handleImportSchemaOnly}
+          onImportDataOnly={handleImportDataOnly}
+          onImportBoth={handleImportBoth}
+        />
       </CardContent>
     </Card>
   );
