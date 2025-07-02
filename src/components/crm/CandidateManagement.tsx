@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, Users, UserCheck, Clock, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import CandidatesTable from './candidates/CandidatesTable';
+import CandidatesTableAdvanced from './candidates/CandidatesTableAdvanced';
 import CandidateFormDialog from './candidates/CandidateFormDialog';
 import CandidateDetailDialog from './candidates/CandidateDetailDialog';
 import { Candidate, CandidateFormData } from './candidates/types';
@@ -198,24 +198,11 @@ const CandidateManagement = () => {
         </Card>
       </div>
 
-      {/* Search */}
-      <div className="flex items-center space-x-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <Input
-            placeholder="Search candidates..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-      </div>
-
       {/* Candidates Table */}
       <Card>
         <CardContent className="p-0">
-          <CandidatesTable
-            candidates={filteredCandidates}
+          <CandidatesTableAdvanced
+            candidates={mappedCandidates}
             onView={handleViewCandidate}
             onEdit={handleEditClick}
             onTogglePortalAccess={handleTogglePortalAccess}
