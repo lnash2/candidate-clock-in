@@ -50,7 +50,7 @@ export const FileUploadImportCard = () => {
     return 'unknown';
   };
 
-  const validateSqlContent = (content: string): { valid: boolean; error?: string } => {
+  const validateSqlContent = (content: string, isPartialContent: boolean = false): { valid: boolean; error?: string } => {
     if (!content || content.trim().length === 0) {
       return { valid: false, error: 'File is empty' };
     }
@@ -61,7 +61,10 @@ export const FileUploadImportCard = () => {
     const hasSqlKeywords = sqlKeywords.some(keyword => upperContent.includes(keyword));
     
     if (!hasSqlKeywords) {
-      return { valid: false, error: 'File does not contain valid SQL statements' };
+      const errorMsg = isPartialContent 
+        ? 'File sample does not contain SQL statements (first 10KB checked)'
+        : 'File does not contain valid SQL statements';
+      return { valid: false, error: errorMsg };
     }
     
     return { valid: true };
@@ -70,12 +73,17 @@ export const FileUploadImportCard = () => {
   const readFileContent = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
+      
+      // For large files (>100MB), only read first 10KB for validation
+      const isLargeFile = file.size > 100 * 1024 * 1024; // 100MB
+      const chunk = isLargeFile ? file.slice(0, 10 * 1024) : file; // First 10KB or full file
+      
       reader.onload = (e) => {
         const content = e.target?.result as string;
         resolve(content);
       };
       reader.onerror = () => reject(new Error('Failed to read file'));
-      reader.readAsText(file);
+      reader.readAsText(chunk);
     });
   };
 
@@ -93,13 +101,14 @@ export const FileUploadImportCard = () => {
       
       try {
         const content = await readFileContent(file);
-        const validation = validateSqlContent(content);
+        const isLargeFile = file.size > 100 * 1024 * 1024; // 100MB
+        const validation = validateSqlContent(content, isLargeFile);
         const type = detectFileType(file.name, content);
         
         processedFiles.push({
           file,
           type,
-          content,
+          content: isLargeFile ? undefined : content, // Don't store full content for large files
           valid: validation.valid,
           error: validation.error
         });
@@ -315,6 +324,18 @@ export const FileUploadImportCard = () => {
     }
   };
 
+  const readLargeFileForImport = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target?.result as string;
+        resolve(content);
+      };
+      reader.onerror = () => reject(new Error('Failed to read large file'));
+      reader.readAsText(file);
+    });
+  };
+
   const handleImport = async () => {
     const schemaFile = uploadedFiles.find(f => f.type === 'schema' && f.valid);
     const dataFile = uploadedFiles.find(f => f.type === 'data' && f.valid);
@@ -336,7 +357,8 @@ export const FileUploadImportCard = () => {
         message: 'Importing schema with _PCRM suffix...'
       });
 
-      const transformedSchema = transformSqlWithPcrmSuffix(schemaFile.content!);
+      const schemaContent = schemaFile.content || await readLargeFileForImport(schemaFile.file);
+      const transformedSchema = transformSqlWithPcrmSuffix(schemaContent);
       const schemaSuccess = await processSqlInBatches(transformedSchema, 'Schema import');
       
       if (!schemaSuccess) return;
@@ -345,11 +367,12 @@ export const FileUploadImportCard = () => {
       updateStatus({
         step: 'importing-data',
         progress: 70,
-        message: 'Importing data with _PCRM suffix...'
+        message: 'Reading and importing large data file with _PCRM suffix...'
       });
 
-      const transformedData = transformSqlWithPcrmSuffix(dataFile.content!);
-      const dataSuccess = await processSqlInBatches(transformedData, 'Data import', 25);
+      const dataContent = dataFile.content || await readLargeFileForImport(dataFile.file);
+      const transformedData = transformSqlWithPcrmSuffix(dataContent);
+      const dataSuccess = await processSqlInBatches(transformedData, 'Data import', 10); // Smaller batches for large data
       
       if (!dataSuccess) return;
 
