@@ -91,7 +91,9 @@ export const transformSqlWithPcrmSuffix = (sqlContent: string): string => {
         return match; // Already has suffix
       }
       const schemaPrefix = schema ? `${schemaQuote}${schema}${schemaQuote}.` : '';
-      return match.replace(new RegExp(`${schemaPrefix}${objQuote}${functionName}${objQuote}`), `${schemaPrefix}${objQuote}${functionName}_PCRM${objQuote}`);
+      const originalName = `${schemaPrefix}${objQuote}${functionName}${objQuote}`;
+      const newName = `${schemaPrefix}${objQuote}${functionName}_PCRM${objQuote}`;
+      return match.replace(originalName, newName);
     }
   );
 
@@ -103,7 +105,9 @@ export const transformSqlWithPcrmSuffix = (sqlContent: string): string => {
         return match; // Already has suffix
       }
       const schemaPrefix = schema ? `${schemaQuote}${schema}${schemaQuote}.` : '';
-      return match.replace(new RegExp(`${schemaPrefix}${objQuote}${indexName}${objQuote}`), `${schemaPrefix}${objQuote}${indexName}_PCRM${objQuote}`);
+      const originalName = `${schemaPrefix}${objQuote}${indexName}${objQuote}`;
+      const newName = `${schemaPrefix}${objQuote}${indexName}_PCRM${objQuote}`;
+      return match.replace(originalName, newName);
     }
   );
 
@@ -167,44 +171,26 @@ export const transformSqlWithPcrmSuffix = (sqlContent: string): string => {
     }
   );
 
-  // Transform type references in function parameters and return types
+  // Only transform explicit type casts (::type_name) to avoid breaking column names
   transformedSql = transformedSql.replace(
-    /\b(\w+)(?=\s*(?:\[\])?(?:\s*,|\s*\)|\s+DEFAULT|\s*$))/gi,
-    (match, typeName) => {
-      // Only transform custom types, not built-in PostgreSQL types
-      const builtinTypes = ['integer', 'text', 'varchar', 'char', 'boolean', 'date', 'timestamp', 'numeric', 'decimal', 'real', 'bigint', 'smallint', 'serial', 'bigserial', 'uuid', 'json', 'jsonb', 'bytea', 'inet', 'cidr', 'macaddr', 'xml', 'money', 'point', 'line', 'lseg', 'box', 'path', 'polygon', 'circle', 'interval', 'time', 'timetz', 'timestamptz'];
-      
-      if (builtinTypes.includes(typeName.toLowerCase()) || typeName.toLowerCase().endsWith('_pcrm')) {
-        return match;
-      }
-      
-      // Check if this looks like a custom type (not a column name or keyword)
-      if (/^[a-z_][a-z0-9_]*$/i.test(typeName) && typeName.length > 2) {
-        return `${typeName}_PCRM`;
-      }
-      
-      return match;
-    }
-  );
-
-  // Transform enum references in INSERT statements and other contexts
-  transformedSql = transformedSql.replace(
-    /::(\w+)/gi,
-    (match, typeName) => {
+    /::(?:([`"]?)(\w+)\1\.)?([`"]?)(\w+)\3/gi,
+    (match, schemaQuote, schema, objQuote, typeName) => {
       if (typeName.toLowerCase().endsWith('_pcrm')) {
         return match; // Already has suffix
       }
       
       // Only transform custom types, not built-in types
-      const builtinTypes = ['integer', 'text', 'varchar', 'char', 'boolean', 'date', 'timestamp', 'numeric', 'decimal', 'real', 'bigint', 'smallint', 'uuid', 'json', 'jsonb'];
+      const builtinTypes = ['integer', 'text', 'varchar', 'char', 'boolean', 'date', 'timestamp', 'numeric', 'decimal', 'real', 'bigint', 'smallint', 'uuid', 'json', 'jsonb', 'bytea', 'inet', 'cidr', 'macaddr', 'xml', 'money', 'point', 'line', 'lseg', 'box', 'path', 'polygon', 'circle', 'interval', 'time', 'timetz', 'timestamptz'];
       
       if (builtinTypes.includes(typeName.toLowerCase())) {
         return match;
       }
       
-      return `::${typeName}_PCRM`;
+      const schemaPrefix = schema ? `${schemaQuote}${schema}${schemaQuote}.` : '';
+      return `::${schemaPrefix}${objQuote}${typeName}_PCRM${objQuote}`;
     }
   );
+
 
   return transformedSql;
 };
