@@ -10,9 +10,25 @@ interface LfsPointer {
   size: number;
 }
 
+interface GitHubRepository {
+  id: number;
+  name: string;
+  full_name: string;
+  owner: {
+    login: string;
+    type: string;
+  };
+  private: boolean;
+  permissions?: {
+    admin: boolean;
+    maintain: boolean;
+    push: boolean;
+    triage: boolean;
+    pull: boolean;
+  };
+}
+
 export class GitHubLfsService {
-  private static readonly REPO_OWNER = 'lnash2';
-  private static readonly REPO_NAME = 'candidate-clock-in';
   private static githubToken: string | null = null;
 
   static setGitHubToken(token: string) {
@@ -31,10 +47,28 @@ export class GitHubLfsService {
     return headers;
   }
 
-  static async validateBranch(branch: string): Promise<{ valid: boolean; error?: string }> {
+  static async getUserRepositories(): Promise<{ repositories: GitHubRepository[]; error?: string }> {
     try {
       const response = await fetch(
-        `https://api.github.com/repos/${this.REPO_OWNER}/${this.REPO_NAME}/branches/${branch}`,
+        'https://api.github.com/user/repos?per_page=100&sort=updated',
+        { headers: this.getHeaders() }
+      );
+      
+      if (!response.ok) {
+        return { repositories: [], error: `Failed to fetch repositories: ${response.statusText}` };
+      }
+      
+      const data = await response.json();
+      return { repositories: data };
+    } catch (error) {
+      return { repositories: [], error: `Network error: ${error instanceof Error ? error.message : 'Unknown error'}` };
+    }
+  }
+
+  static async validateBranch(repoOwner: string, repoName: string, branch: string): Promise<{ valid: boolean; error?: string }> {
+    try {
+      const response = await fetch(
+        `https://api.github.com/repos/${repoOwner}/${repoName}/branches/${branch}`,
         { headers: this.getHeaders() }
       );
       
@@ -50,10 +84,10 @@ export class GitHubLfsService {
     }
   }
 
-  static async checkFileExists(filePath: string, branch: string): Promise<{ exists: boolean; error?: string }> {
+  static async checkFileExists(repoOwner: string, repoName: string, filePath: string, branch: string): Promise<{ exists: boolean; error?: string }> {
     try {
       const response = await fetch(
-        `https://api.github.com/repos/${this.REPO_OWNER}/${this.REPO_NAME}/contents/${filePath}?ref=${branch}`,
+        `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}?ref=${branch}`,
         { headers: this.getHeaders() }
       );
       
@@ -69,11 +103,11 @@ export class GitHubLfsService {
     }
   }
 
-  static async fetchLfsFile(filePath: string, branch: string = 'main'): Promise<GitHubLfsResponse> {
+  static async fetchLfsFile(repoOwner: string, repoName: string, filePath: string, branch: string = 'main'): Promise<GitHubLfsResponse> {
     try {
       // First, get the LFS pointer from the regular file
       const pointerResponse = await fetch(
-        `https://api.github.com/repos/${this.REPO_OWNER}/${this.REPO_NAME}/contents/${filePath}?ref=${branch}`,
+        `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}?ref=${branch}`,
         { headers: this.getHeaders() }
       );
 
@@ -92,7 +126,7 @@ export class GitHubLfsService {
 
       // Fetch the actual file content from GitHub LFS
       const lfsResponse = await fetch(
-        `https://github.com/${this.REPO_OWNER}/${this.REPO_NAME}/raw/${branch}/${filePath}`
+        `https://github.com/${repoOwner}/${repoName}/raw/${branch}/${filePath}`
       );
 
       if (!lfsResponse.ok) {
@@ -179,18 +213,18 @@ export class GitHubLfsService {
     return transformedSql;
   }
 
-  static async fetchSchemaFile(branch: string = 'main', folder: string = 'leg-sql'): Promise<GitHubLfsResponse> {
-    return this.fetchLfsFile(`${folder}/legacy_schema.sql`, branch);
+  static async fetchSchemaFile(repoOwner: string, repoName: string, branch: string = 'main', folder: string = 'leg-sql'): Promise<GitHubLfsResponse> {
+    return this.fetchLfsFile(repoOwner, repoName, `${folder}/legacy_schema.sql`, branch);
   }
 
-  static async fetchDataFile(branch: string = 'main', folder: string = 'leg-sql'): Promise<GitHubLfsResponse> {
-    return this.fetchLfsFile(`${folder}/legacy_data.sql`, branch);
+  static async fetchDataFile(repoOwner: string, repoName: string, branch: string = 'main', folder: string = 'leg-sql'): Promise<GitHubLfsResponse> {
+    return this.fetchLfsFile(repoOwner, repoName, `${folder}/legacy_data.sql`, branch);
   }
 
-  static async getBranches(): Promise<{ branches: string[]; error?: string }> {
+  static async getBranches(repoOwner: string, repoName: string): Promise<{ branches: string[]; error?: string }> {
     try {
       const response = await fetch(
-        `https://api.github.com/repos/${this.REPO_OWNER}/${this.REPO_NAME}/branches`,
+        `https://api.github.com/repos/${repoOwner}/${repoName}/branches`,
         { headers: this.getHeaders() }
       );
       
@@ -206,10 +240,10 @@ export class GitHubLfsService {
     }
   }
 
-  static async getFolders(branch: string): Promise<{ folders: string[]; error?: string }> {
+  static async getFolders(repoOwner: string, repoName: string, branch: string): Promise<{ folders: string[]; error?: string }> {
     try {
       const response = await fetch(
-        `https://api.github.com/repos/${this.REPO_OWNER}/${this.REPO_NAME}/contents?ref=${branch}`,
+        `https://api.github.com/repos/${repoOwner}/${repoName}/contents?ref=${branch}`,
         { headers: this.getHeaders() }
       );
       
@@ -229,10 +263,10 @@ export class GitHubLfsService {
     }
   }
 
-  static async getSqlFilesInFolder(folderPath: string, branch: string): Promise<{ files: string[]; error?: string }> {
+  static async getSqlFilesInFolder(repoOwner: string, repoName: string, folderPath: string, branch: string): Promise<{ files: string[]; error?: string }> {
     try {
       const response = await fetch(
-        `https://api.github.com/repos/${this.REPO_OWNER}/${this.REPO_NAME}/contents/${folderPath}?ref=${branch}`,
+        `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${folderPath}?ref=${branch}`,
         { headers: this.getHeaders() }
       );
       

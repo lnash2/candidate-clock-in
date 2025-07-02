@@ -19,20 +19,34 @@ interface ImportStatus {
   error?: string;
 }
 
+interface GitHubRepository {
+  id: number;
+  name: string;
+  full_name: string;
+  owner: {
+    login: string;
+    type: string;
+  };
+  private: boolean;
+}
+
 export const GitHubImportCard = () => {
   const [importStatus, setImportStatus] = useState<ImportStatus>({
     step: 'idle',
     progress: 0,
     message: 'Ready to import from GitHub repository'
   });
+  const [selectedRepository, setSelectedRepository] = useState<GitHubRepository | null>(null);
+  const [availableRepositories, setAvailableRepositories] = useState<GitHubRepository[]>([]);
+  const [isLoadingRepositories, setIsLoadingRepositories] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState('main');
   const [customBranch, setCustomBranch] = useState('');
   const [useCustomBranch, setUseCustomBranch] = useState(false);
-  const [availableBranches, setAvailableBranches] = useState<string[]>(['main', 'leg-sql']);
+  const [availableBranches, setAvailableBranches] = useState<string[]>([]);
   const [selectedFolder, setSelectedFolder] = useState('leg-sql');
   const [customFolder, setCustomFolder] = useState('');
   const [useCustomFolder, setUseCustomFolder] = useState(false);
-  const [availableFolders, setAvailableFolders] = useState<string[]>(['leg-sql']);
+  const [availableFolders, setAvailableFolders] = useState<string[]>([]);
   const [folderFiles, setFolderFiles] = useState<string[]>([]);
   const [isLoadingFolders, setIsLoadingFolders] = useState(false);
   const [validationStatus, setValidationStatus] = useState<{ valid: boolean; message?: string } | null>(null);
@@ -42,56 +56,93 @@ export const GitHubImportCard = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    loadBranches();
-  }, []);
+    if (isTokenValid && selectedRepository) {
+      loadBranches();
+    }
+  }, [isTokenValid, selectedRepository]);
 
   useEffect(() => {
-    if (getCurrentBranch()) {
+    if (selectedRepository && getCurrentBranch()) {
       loadFolders();
     }
-  }, [selectedBranch, customBranch, useCustomBranch]);
+  }, [selectedRepository, selectedBranch, customBranch, useCustomBranch]);
 
   useEffect(() => {
-    if (getCurrentBranch() && getCurrentFolder()) {
+    if (selectedRepository && getCurrentBranch() && getCurrentFolder()) {
       loadFolderFiles();
     }
-  }, [selectedBranch, customBranch, useCustomBranch, selectedFolder, customFolder, useCustomFolder]);
+  }, [selectedRepository, selectedBranch, customBranch, useCustomBranch, selectedFolder, customFolder, useCustomFolder]);
+
+  const loadRepositories = async () => {
+    setIsLoadingRepositories(true);
+    try {
+      const { repositories, error } = await GitHubLfsService.getUserRepositories();
+      if (error) {
+        console.warn('Failed to load repositories:', error);
+        toast({
+          title: 'Failed to Load Repositories',
+          description: error,
+          variant: 'destructive',
+        });
+      } else {
+        setAvailableRepositories(repositories);
+      }
+    } catch (error) {
+      console.warn('Error loading repositories:', error);
+    } finally {
+      setIsLoadingRepositories(false);
+    }
+  };
 
   const loadBranches = async () => {
-    const { branches } = await GitHubLfsService.getBranches();
+    if (!selectedRepository) return;
+    
+    const { branches } = await GitHubLfsService.getBranches(selectedRepository.owner.login, selectedRepository.name);
     if (branches.length > 0) {
-      setAvailableBranches(['main', 'leg-sql', ...branches.filter(b => !['main', 'leg-sql'].includes(b))]);
+      setAvailableBranches(branches);
+      // Set default branch if current selection is not available
+      if (!branches.includes(selectedBranch) && !useCustomBranch) {
+        setSelectedBranch(branches.includes('main') ? 'main' : branches[0]);
+      }
     }
   };
 
   const loadFolders = async () => {
+    if (!selectedRepository) return;
+    
     const branch = getCurrentBranch();
     if (!branch.trim()) return;
 
     setIsLoadingFolders(true);
     try {
-      const { folders, error } = await GitHubLfsService.getFolders(branch);
+      const { folders, error } = await GitHubLfsService.getFolders(selectedRepository.owner.login, selectedRepository.name, branch);
       if (error) {
         console.warn('Failed to load folders:', error);
-        setAvailableFolders(['leg-sql']); // fallback
+        setAvailableFolders([]); // fallback
       } else {
-        setAvailableFolders(['leg-sql', ...folders.filter(f => f !== 'leg-sql')]);
+        setAvailableFolders(folders);
+        // Set default folder if current selection is not available
+        if (!folders.includes(selectedFolder) && !useCustomFolder) {
+          setSelectedFolder(folders.includes('leg-sql') ? 'leg-sql' : (folders[0] || ''));
+        }
       }
     } catch (error) {
       console.warn('Error loading folders:', error);
-      setAvailableFolders(['leg-sql']); // fallback
+      setAvailableFolders([]); // fallback
     } finally {
       setIsLoadingFolders(false);
     }
   };
 
   const loadFolderFiles = async () => {
+    if (!selectedRepository) return;
+    
     const branch = getCurrentBranch();
     const folder = getCurrentFolder();
     if (!branch.trim() || !folder.trim()) return;
 
     try {
-      const { files } = await GitHubLfsService.getSqlFilesInFolder(folder, branch);
+      const { files } = await GitHubLfsService.getSqlFilesInFolder(selectedRepository.owner.login, selectedRepository.name, folder, branch);
       setFolderFiles(files);
     } catch (error) {
       console.warn('Error loading folder files:', error);
@@ -122,8 +173,8 @@ export const GitHubImportCard = () => {
           title: 'GitHub Token Valid',
           description: 'Successfully authenticated with GitHub',
         });
-        // Refresh branches after successful authentication
-        loadBranches();
+        // Load repositories after successful authentication
+        loadRepositories();
       } else {
         setIsTokenValid(false);
         toast({
@@ -149,6 +200,11 @@ export const GitHubImportCard = () => {
   const getCurrentBranch = () => useCustomBranch ? customBranch : selectedBranch;
 
   const validateBranchAndFiles = async () => {
+    if (!selectedRepository) {
+      setValidationStatus({ valid: false, message: 'Please select a repository first' });
+      return;
+    }
+    
     const branch = getCurrentBranch();
     const folder = getCurrentFolder();
     if (!branch.trim()) {
@@ -165,15 +221,15 @@ export const GitHubImportCard = () => {
 
     try {
       // Validate branch exists
-      const branchValidation = await GitHubLfsService.validateBranch(branch);
+      const branchValidation = await GitHubLfsService.validateBranch(selectedRepository.owner.login, selectedRepository.name, branch);
       if (!branchValidation.valid) {
         setValidationStatus({ valid: false, message: branchValidation.error });
         return;
       }
 
       // Check if files exist in the selected folder
-      const schemaCheck = await GitHubLfsService.checkFileExists(`${folder}/legacy_schema.sql`, branch);
-      const dataCheck = await GitHubLfsService.checkFileExists(`${folder}/legacy_data.sql`, branch);
+      const schemaCheck = await GitHubLfsService.checkFileExists(selectedRepository.owner.login, selectedRepository.name, `${folder}/legacy_schema.sql`, branch);
+      const dataCheck = await GitHubLfsService.checkFileExists(selectedRepository.owner.login, selectedRepository.name, `${folder}/legacy_data.sql`, branch);
 
       if (!schemaCheck.exists || !dataCheck.exists) {
         const missingFiles = [];
@@ -275,6 +331,15 @@ export const GitHubImportCard = () => {
   };
 
   const handleGitHubImport = async () => {
+    if (!selectedRepository) {
+      toast({
+        title: 'Repository Required',
+        description: 'Please select a repository first.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const branch = getCurrentBranch();
     
     // Validate branch and files before starting import
@@ -296,7 +361,12 @@ export const GitHubImportCard = () => {
 
       // Fetch schema file
       const folder = getCurrentFolder();
-      const schemaResult = await GitHubLfsService.fetchSchemaFile(branch, folder);
+      const schemaResult = await GitHubLfsService.fetchSchemaFile(
+        selectedRepository.owner.login, 
+        selectedRepository.name, 
+        branch, 
+        folder
+      );
       if (!schemaResult.success || !schemaResult.content) {
         throw new Error(schemaResult.error || 'Failed to fetch schema file');
       }
@@ -320,7 +390,12 @@ export const GitHubImportCard = () => {
       });
 
       // Fetch data file
-      const dataResult = await GitHubLfsService.fetchDataFile(branch, folder);
+      const dataResult = await GitHubLfsService.fetchDataFile(
+        selectedRepository.owner.login, 
+        selectedRepository.name, 
+        branch, 
+        folder
+      );
       if (!dataResult.success || !dataResult.content) {
         throw new Error(dataResult.error || 'Failed to fetch data file');
       }
@@ -495,6 +570,65 @@ export const GitHubImportCard = () => {
           </div>
         </div>
 
+        {/* Repository Selection */}
+        {isTokenValid && (
+          <div className="space-y-4 border rounded-lg p-4 bg-muted/50">
+            <h4 className="font-medium flex items-center gap-2">
+              <Github className="h-4 w-4" />
+              Repository Selection
+            </h4>
+            
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label>Select Repository</Label>
+                <Select 
+                  value={selectedRepository?.full_name || ""} 
+                  onValueChange={(value) => {
+                    const repo = availableRepositories.find(r => r.full_name === value);
+                    setSelectedRepository(repo || null);
+                    setValidationStatus(null);
+                    // Reset branch and folder selections when repository changes
+                    setAvailableBranches([]);
+                    setAvailableFolders([]);
+                    setSelectedBranch('main');
+                    setSelectedFolder('leg-sql');
+                  }}
+                  disabled={isLoadingRepositories}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose repository" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableRepositories.map((repo) => (
+                      <SelectItem key={repo.id} value={repo.full_name}>
+                        <div className="flex items-center gap-2">
+                          <span>{repo.full_name}</span>
+                          {repo.private && <Badge variant="secondary" className="text-xs">Private</Badge>}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {isLoadingRepositories && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Loading repositories...
+                </div>
+              )}
+
+              {selectedRepository && (
+                <div className="text-sm text-muted-foreground">
+                  <p><strong>Selected:</strong> {selectedRepository.full_name}</p>
+                  <p><strong>Owner:</strong> {selectedRepository.owner.login} ({selectedRepository.owner.type})</p>
+                  <p><strong>Visibility:</strong> {selectedRepository.private ? 'Private' : 'Public'}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Branch Selection */}
         <div className="space-y-4 border rounded-lg p-4 bg-muted/50">
           <h4 className="font-medium flex items-center gap-2">
@@ -663,7 +797,7 @@ export const GitHubImportCard = () => {
             Repository Information
           </h4>
           <div className="text-sm text-muted-foreground space-y-1">
-            <p><strong>Repository:</strong> lnash2/candidate-clock-in</p>
+            <p><strong>Repository:</strong> {selectedRepository?.full_name || 'None selected'}</p>
             <p><strong>Selected Branch:</strong> {getCurrentBranch() || 'None selected'}</p>
             <p><strong>Selected Folder:</strong> {getCurrentFolder() || 'None selected'}</p>
             <p><strong>Files:</strong> {getCurrentFolder()}/legacy_schema.sql, {getCurrentFolder()}/legacy_data.sql</p>
