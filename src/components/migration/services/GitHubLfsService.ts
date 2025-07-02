@@ -13,7 +13,7 @@ interface LfsPointer {
 export class GitHubLfsService {
   private static readonly REPO_OWNER = 'lnash2';
   private static readonly REPO_NAME = 'candidate-clock-in';
-  private static readonly BRANCH = '278b4e8ebf7cabc75525844cfba8e1deaa2178b2';
+  private static readonly BRANCH = 'main';
 
   static async fetchLfsFile(filePath: string): Promise<GitHubLfsResponse> {
     try {
