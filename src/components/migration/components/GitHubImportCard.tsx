@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Github, Download, Database, FileText, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Github, Download, Database, FileText, CheckCircle, AlertCircle, Loader2, GitBranch, RefreshCw } from 'lucide-react';
 import { GitHubLfsService } from '../services/GitHubLfsService';
 
 interface ImportStatus {
@@ -22,7 +25,71 @@ export const GitHubImportCard = () => {
     progress: 0,
     message: 'Ready to import from GitHub repository'
   });
+  const [selectedBranch, setSelectedBranch] = useState('main');
+  const [customBranch, setCustomBranch] = useState('');
+  const [useCustomBranch, setUseCustomBranch] = useState(false);
+  const [availableBranches, setAvailableBranches] = useState<string[]>(['main', 'leg-sql']);
+  const [validationStatus, setValidationStatus] = useState<{ valid: boolean; message?: string } | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    loadBranches();
+  }, []);
+
+  const loadBranches = async () => {
+    const { branches } = await GitHubLfsService.getBranches();
+    if (branches.length > 0) {
+      setAvailableBranches(['main', 'leg-sql', ...branches.filter(b => !['main', 'leg-sql'].includes(b))]);
+    }
+  };
+
+  const getCurrentBranch = () => useCustomBranch ? customBranch : selectedBranch;
+
+  const validateBranchAndFiles = async () => {
+    const branch = getCurrentBranch();
+    if (!branch.trim()) {
+      setValidationStatus({ valid: false, message: 'Please enter a branch name' });
+      return;
+    }
+
+    setIsValidating(true);
+    setValidationStatus(null);
+
+    try {
+      // Validate branch exists
+      const branchValidation = await GitHubLfsService.validateBranch(branch);
+      if (!branchValidation.valid) {
+        setValidationStatus({ valid: false, message: branchValidation.error });
+        return;
+      }
+
+      // Check if files exist
+      const schemaCheck = await GitHubLfsService.checkFileExists('leg-sql/legacy_schema.sql', branch);
+      const dataCheck = await GitHubLfsService.checkFileExists('leg-sql/legacy_data.sql', branch);
+
+      if (!schemaCheck.exists || !dataCheck.exists) {
+        const missingFiles = [];
+        if (!schemaCheck.exists) missingFiles.push('legacy_schema.sql');
+        if (!dataCheck.exists) missingFiles.push('legacy_data.sql');
+        
+        setValidationStatus({ 
+          valid: false, 
+          message: `Missing files in branch '${branch}': ${missingFiles.join(', ')}` 
+        });
+        return;
+      }
+
+      setValidationStatus({ valid: true, message: `Branch '${branch}' validated successfully` });
+    } catch (error) {
+      setValidationStatus({ 
+        valid: false, 
+        message: `Validation failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      });
+    } finally {
+      setIsValidating(false);
+    }
+  };
 
   const updateStatus = (update: Partial<ImportStatus>) => {
     setImportStatus(prev => ({ ...prev, ...update }));
@@ -101,15 +168,27 @@ export const GitHubImportCard = () => {
   };
 
   const handleGitHubImport = async () => {
+    const branch = getCurrentBranch();
+    
+    // Validate branch and files before starting import
+    if (!validationStatus?.valid) {
+      toast({
+        title: 'Validation Required',
+        description: 'Please validate the branch and files before importing.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       updateStatus({
         step: 'fetching-schema',
         progress: 5,
-        message: 'Fetching schema from GitHub repository...'
+        message: `Fetching schema from branch '${branch}'...`
       });
 
       // Fetch schema file
-      const schemaResult = await GitHubLfsService.fetchSchemaFile();
+      const schemaResult = await GitHubLfsService.fetchSchemaFile(branch);
       if (!schemaResult.success || !schemaResult.content) {
         throw new Error(schemaResult.error || 'Failed to fetch schema file');
       }
@@ -133,7 +212,7 @@ export const GitHubImportCard = () => {
       });
 
       // Fetch data file
-      const dataResult = await GitHubLfsService.fetchDataFile();
+      const dataResult = await GitHubLfsService.fetchDataFile(branch);
       if (!dataResult.success || !dataResult.content) {
         throw new Error(dataResult.error || 'Failed to fetch data file');
       }
@@ -247,6 +326,95 @@ export const GitHubImportCard = () => {
           </Alert>
         )}
 
+        {/* Branch Selection */}
+        <div className="space-y-4 border rounded-lg p-4 bg-muted/50">
+          <h4 className="font-medium flex items-center gap-2">
+            <GitBranch className="h-4 w-4" />
+            Branch Selection
+          </h4>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Select Branch</Label>
+              <Select 
+                value={useCustomBranch ? 'custom' : selectedBranch} 
+                onValueChange={(value) => {
+                  if (value === 'custom') {
+                    setUseCustomBranch(true);
+                  } else {
+                    setUseCustomBranch(false);
+                    setSelectedBranch(value);
+                    setValidationStatus(null);
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableBranches.map((branch) => (
+                    <SelectItem key={branch} value={branch}>
+                      {branch}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="custom">Custom branch...</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {useCustomBranch && (
+              <div className="space-y-2">
+                <Label>Custom Branch Name</Label>
+                <Input
+                  value={customBranch}
+                  onChange={(e) => {
+                    setCustomBranch(e.target.value);
+                    setValidationStatus(null);
+                  }}
+                  placeholder="Enter branch name"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-2">
+            <Button 
+              onClick={validateBranchAndFiles} 
+              disabled={isValidating || !getCurrentBranch().trim()}
+              variant="outline"
+              size="sm"
+            >
+              {isValidating ? (
+                <>
+                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                  Validating...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="mr-2 h-3 w-3" />
+                  Validate Branch & Files
+                </>
+              )}
+            </Button>
+            
+            <Button onClick={loadBranches} variant="outline" size="sm">
+              <RefreshCw className="mr-2 h-3 w-3" />
+              Refresh Branches
+            </Button>
+          </div>
+
+          {validationStatus && (
+            <Alert variant={validationStatus.valid ? "default" : "destructive"}>
+              {validationStatus.valid ? (
+                <CheckCircle className="h-4 w-4" />
+              ) : (
+                <AlertCircle className="h-4 w-4" />
+              )}
+              <AlertDescription>{validationStatus.message}</AlertDescription>
+            </Alert>
+          )}
+        </div>
+
         <div className="space-y-2">
           <h4 className="font-medium flex items-center gap-2">
             <FileText className="h-4 w-4" />
@@ -254,7 +422,7 @@ export const GitHubImportCard = () => {
           </h4>
           <div className="text-sm text-muted-foreground space-y-1">
             <p><strong>Repository:</strong> lnash2/candidate-clock-in</p>
-            <p><strong>Branch:</strong> 278b4e8e...</p>
+            <p><strong>Selected Branch:</strong> {getCurrentBranch() || 'None selected'}</p>
             <p><strong>Files:</strong> leg-sql/legacy_schema.sql, leg-sql/legacy_data.sql</p>
             <p><strong>Transformation:</strong> All table names will get _PCRM suffix</p>
           </div>

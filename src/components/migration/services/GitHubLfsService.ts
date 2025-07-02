@@ -13,13 +13,48 @@ interface LfsPointer {
 export class GitHubLfsService {
   private static readonly REPO_OWNER = 'lnash2';
   private static readonly REPO_NAME = 'candidate-clock-in';
-  private static readonly BRANCH = 'main';
 
-  static async fetchLfsFile(filePath: string): Promise<GitHubLfsResponse> {
+  static async validateBranch(branch: string): Promise<{ valid: boolean; error?: string }> {
+    try {
+      const response = await fetch(
+        `https://api.github.com/repos/${this.REPO_OWNER}/${this.REPO_NAME}/branches/${branch}`
+      );
+      
+      if (response.ok) {
+        return { valid: true };
+      } else if (response.status === 404) {
+        return { valid: false, error: `Branch '${branch}' not found` };
+      } else {
+        return { valid: false, error: `Failed to validate branch: ${response.statusText}` };
+      }
+    } catch (error) {
+      return { valid: false, error: `Network error: ${error instanceof Error ? error.message : 'Unknown error'}` };
+    }
+  }
+
+  static async checkFileExists(filePath: string, branch: string): Promise<{ exists: boolean; error?: string }> {
+    try {
+      const response = await fetch(
+        `https://api.github.com/repos/${this.REPO_OWNER}/${this.REPO_NAME}/contents/${filePath}?ref=${branch}`
+      );
+      
+      if (response.ok) {
+        return { exists: true };
+      } else if (response.status === 404) {
+        return { exists: false, error: `File '${filePath}' not found in branch '${branch}'` };
+      } else {
+        return { exists: false, error: `Failed to check file: ${response.statusText}` };
+      }
+    } catch (error) {
+      return { exists: false, error: `Network error: ${error instanceof Error ? error.message : 'Unknown error'}` };
+    }
+  }
+
+  static async fetchLfsFile(filePath: string, branch: string = 'main'): Promise<GitHubLfsResponse> {
     try {
       // First, get the LFS pointer from the regular file
       const pointerResponse = await fetch(
-        `https://api.github.com/repos/${this.REPO_OWNER}/${this.REPO_NAME}/contents/${filePath}?ref=${this.BRANCH}`
+        `https://api.github.com/repos/${this.REPO_OWNER}/${this.REPO_NAME}/contents/${filePath}?ref=${branch}`
       );
 
       if (!pointerResponse.ok) {
@@ -37,7 +72,7 @@ export class GitHubLfsService {
 
       // Fetch the actual file content from GitHub LFS
       const lfsResponse = await fetch(
-        `https://github.com/${this.REPO_OWNER}/${this.REPO_NAME}/raw/${this.BRANCH}/${filePath}`
+        `https://github.com/${this.REPO_OWNER}/${this.REPO_NAME}/raw/${branch}/${filePath}`
       );
 
       if (!lfsResponse.ok) {
@@ -124,11 +159,29 @@ export class GitHubLfsService {
     return transformedSql;
   }
 
-  static async fetchSchemaFile(): Promise<GitHubLfsResponse> {
-    return this.fetchLfsFile('leg-sql/legacy_schema.sql');
+  static async fetchSchemaFile(branch: string = 'main'): Promise<GitHubLfsResponse> {
+    return this.fetchLfsFile('leg-sql/legacy_schema.sql', branch);
   }
 
-  static async fetchDataFile(): Promise<GitHubLfsResponse> {
-    return this.fetchLfsFile('leg-sql/legacy_data.sql');
+  static async fetchDataFile(branch: string = 'main'): Promise<GitHubLfsResponse> {
+    return this.fetchLfsFile('leg-sql/legacy_data.sql', branch);
+  }
+
+  static async getBranches(): Promise<{ branches: string[]; error?: string }> {
+    try {
+      const response = await fetch(
+        `https://api.github.com/repos/${this.REPO_OWNER}/${this.REPO_NAME}/branches`
+      );
+      
+      if (!response.ok) {
+        return { branches: [], error: `Failed to fetch branches: ${response.statusText}` };
+      }
+      
+      const data = await response.json();
+      const branches = data.map((branch: any) => branch.name);
+      return { branches };
+    } catch (error) {
+      return { branches: [], error: `Network error: ${error instanceof Error ? error.message : 'Unknown error'}` };
+    }
   }
 }
