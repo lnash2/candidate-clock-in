@@ -8,20 +8,92 @@ export interface SimpleImportResult {
   schemaName: string;
 }
 
-// Properly filter PostgreSQL dump files
+// Parse SQL statements properly handling PostgreSQL dollar-quoted strings
 const prepareSql = (sql: string): string[] => {
-  return sql
-    .split(';')
-    .map(s => s.trim())
-    .filter(s => {
-      if (!s) return false;
-      if (s.startsWith('--')) return false;
-      if (s.match(/^(SET|SELECT pg_catalog|\\)/i)) return false;
-      if (s.match(/^(Owner:|Schema:|Type:|Comment:)/i)) return false;
-      if (s.match(/^(COMMENT ON|ALTER .* OWNER TO)/i)) return false;
-      if (s.match(/^(GRANT|REVOKE)/i)) return false;
-      return true;
-    });
+  const statements: string[] = [];
+  let currentStatement = '';
+  let inDollarQuote = false;
+  let dollarTag = '';
+  let inSingleQuote = false;
+  let i = 0;
+
+  while (i < sql.length) {
+    const char = sql[i];
+    const remaining = sql.slice(i);
+
+    // Handle dollar-quoted strings
+    if (!inSingleQuote && char === '$') {
+      const dollarMatch = remaining.match(/^\$([^$]*)\$/);
+      if (dollarMatch) {
+        const tag = dollarMatch[1];
+        if (!inDollarQuote) {
+          // Starting dollar quote
+          inDollarQuote = true;
+          dollarTag = tag;
+          currentStatement += dollarMatch[0];
+          i += dollarMatch[0].length;
+          continue;
+        } else if (tag === dollarTag) {
+          // Ending dollar quote
+          inDollarQuote = false;
+          dollarTag = '';
+          currentStatement += dollarMatch[0];
+          i += dollarMatch[0].length;
+          continue;
+        }
+      }
+    }
+
+    // Handle single quotes
+    if (!inDollarQuote && char === "'") {
+      if (!inSingleQuote) {
+        inSingleQuote = true;
+      } else if (i + 1 < sql.length && sql[i + 1] === "'") {
+        // Escaped single quote
+        currentStatement += "''";
+        i += 2;
+        continue;
+      } else {
+        inSingleQuote = false;
+      }
+    }
+
+    // Handle statement separators
+    if (!inDollarQuote && !inSingleQuote && char === ';') {
+      const trimmed = currentStatement.trim();
+      if (trimmed && isValidStatement(trimmed)) {
+        statements.push(trimmed);
+      }
+      currentStatement = '';
+      i++;
+      continue;
+    }
+
+    currentStatement += char;
+    i++;
+  }
+
+  // Add final statement if exists
+  const trimmed = currentStatement.trim();
+  if (trimmed && isValidStatement(trimmed)) {
+    statements.push(trimmed);
+  }
+
+  return statements;
+};
+
+// Check if a statement should be executed
+const isValidStatement = (statement: string): boolean => {
+  if (!statement) return false;
+  if (statement.startsWith('--')) return false;
+  if (statement.match(/^(SET|SELECT pg_catalog|\\)/i)) return false;
+  if (statement.match(/^(Owner:|Schema:|Type:|Comment:)/i)) return false;
+  if (statement.match(/^(COMMENT ON|ALTER .* OWNER TO)/i)) return false;
+  if (statement.match(/^(GRANT|REVOKE)/i)) return false;
+  
+  // Only allow actual SQL DDL/DML statements
+  const validPrefixes = /^(CREATE|INSERT|UPDATE|DELETE|ALTER|DROP|COPY)/i;
+  return validPrefixes.test(statement);
 };
 
 // Execute a single SQL statement
