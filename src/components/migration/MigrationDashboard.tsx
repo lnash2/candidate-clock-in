@@ -1,16 +1,16 @@
 import React from 'react';
-import { Github } from 'lucide-react';
-import { GitHubImportCard } from './components/GitHubImportCard';
+import { Upload } from 'lucide-react';
+import { FileUploadImportCard } from './components/FileUploadImportCard';
 
 const MigrationDashboard = () => {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center space-x-2">
-        <Github className="h-6 w-6" />
-        <h1 className="text-2xl font-bold">GitHub Data Import</h1>
+        <Upload className="h-6 w-6" />
+        <h1 className="text-2xl font-bold">SQL File Import</h1>
       </div>
       
-      <GitHubImportCard />
+      <FileUploadImportCard />
     </div>
   );
 };
