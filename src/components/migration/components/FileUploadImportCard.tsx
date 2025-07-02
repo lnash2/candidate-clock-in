@@ -266,6 +266,60 @@ export const FileUploadImportCard = () => {
     return transformedSql;
   };
 
+  const handleTestSchema = async () => {
+    const schemaFile = uploadedFiles.find(f => f.type === 'schema' && f.valid);
+
+    if (!schemaFile) {
+      toast({
+        title: 'No Schema File',
+        description: 'Please upload a valid schema SQL file first',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      updateStatus({
+        step: 'importing-schema',
+        progress: 40,
+        message: 'Testing schema parsing and transformation...'
+      });
+
+      const transformedSchema = transformSqlWithPcrmSuffix(schemaFile.content!);
+      
+      // Count statements for feedback
+      const statements = transformedSchema
+        .split(';')
+        .map(stmt => stmt.trim())
+        .filter(stmt => stmt.length > 0 && !stmt.toLowerCase().startsWith('--'));
+
+      updateStatus({
+        step: 'complete',
+        progress: 100,
+        message: `Schema parsed successfully! Found ${statements.length} SQL statements ready for import.`
+      });
+
+      toast({
+        title: 'Schema Test Complete',
+        description: `Schema parsed successfully with _PCRM suffix transformation. Found ${statements.length} statements.`,
+      });
+
+    } catch (error) {
+      console.error('Schema test error:', error);
+      updateStatus({
+        step: 'error',
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        message: 'Schema test failed'
+      });
+
+      toast({
+        title: 'Schema Test Failed',
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleImport = async () => {
     const schemaFile = uploadedFiles.find(f => f.type === 'schema' && f.valid);
     const dataFile = uploadedFiles.find(f => f.type === 'data' && f.valid);
@@ -482,24 +536,46 @@ export const FileUploadImportCard = () => {
           </div>
         </div>
 
-        <Button 
-          onClick={handleImport}
-          disabled={isImporting || !canImport}
-          className="w-full"
-          size="lg"
-        >
-          {isImporting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Importing...
-            </>
-          ) : (
-            <>
-              <Database className="mr-2 h-4 w-4" />
-              Import SQL Files
-            </>
-          )}
-        </Button>
+        <div className="space-y-2">
+          <Button 
+            onClick={handleTestSchema}
+            disabled={isImporting || !uploadedFiles.some(f => f.type === 'schema' && f.valid)}
+            className="w-full"
+            variant="outline"
+            size="lg"
+          >
+            {isImporting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Testing Schema...
+              </>
+            ) : (
+              <>
+                <FileText className="mr-2 h-4 w-4" />
+                Test Schema Parsing
+              </>
+            )}
+          </Button>
+
+          <Button 
+            onClick={handleImport}
+            disabled={isImporting || !canImport}
+            className="w-full"
+            size="lg"
+          >
+            {isImporting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Importing...
+              </>
+            ) : (
+              <>
+                <Database className="mr-2 h-4 w-4" />
+                Import SQL Files
+              </>
+            )}
+          </Button>
+        </div>
 
         {importStatus.step === 'complete' && (
           <Alert>
