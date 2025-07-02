@@ -159,12 +159,12 @@ export class GitHubLfsService {
     return transformedSql;
   }
 
-  static async fetchSchemaFile(branch: string = 'main'): Promise<GitHubLfsResponse> {
-    return this.fetchLfsFile('leg-sql/legacy_schema.sql', branch);
+  static async fetchSchemaFile(branch: string = 'main', folder: string = 'leg-sql'): Promise<GitHubLfsResponse> {
+    return this.fetchLfsFile(`${folder}/legacy_schema.sql`, branch);
   }
 
-  static async fetchDataFile(branch: string = 'main'): Promise<GitHubLfsResponse> {
-    return this.fetchLfsFile('leg-sql/legacy_data.sql', branch);
+  static async fetchDataFile(branch: string = 'main', folder: string = 'leg-sql'): Promise<GitHubLfsResponse> {
+    return this.fetchLfsFile(`${folder}/legacy_data.sql`, branch);
   }
 
   static async getBranches(): Promise<{ branches: string[]; error?: string }> {
@@ -182,6 +182,50 @@ export class GitHubLfsService {
       return { branches };
     } catch (error) {
       return { branches: [], error: `Network error: ${error instanceof Error ? error.message : 'Unknown error'}` };
+    }
+  }
+
+  static async getFolders(branch: string): Promise<{ folders: string[]; error?: string }> {
+    try {
+      const response = await fetch(
+        `https://api.github.com/repos/${this.REPO_OWNER}/${this.REPO_NAME}/contents?ref=${branch}`
+      );
+      
+      if (!response.ok) {
+        return { folders: [], error: `Failed to fetch folders: ${response.statusText}` };
+      }
+      
+      const data = await response.json();
+      // Filter for directories only and extract their names
+      const folders = data
+        .filter((item: any) => item.type === 'dir')
+        .map((item: any) => item.name);
+      
+      return { folders };
+    } catch (error) {
+      return { folders: [], error: `Network error: ${error instanceof Error ? error.message : 'Unknown error'}` };
+    }
+  }
+
+  static async getSqlFilesInFolder(folderPath: string, branch: string): Promise<{ files: string[]; error?: string }> {
+    try {
+      const response = await fetch(
+        `https://api.github.com/repos/${this.REPO_OWNER}/${this.REPO_NAME}/contents/${folderPath}?ref=${branch}`
+      );
+      
+      if (!response.ok) {
+        return { files: [], error: `Failed to fetch files in folder: ${response.statusText}` };
+      }
+      
+      const data = await response.json();
+      // Filter for SQL files only
+      const sqlFiles = data
+        .filter((item: any) => item.type === 'file' && item.name.toLowerCase().endsWith('.sql'))
+        .map((item: any) => item.name);
+      
+      return { files: sqlFiles };
+    } catch (error) {
+      return { files: [], error: `Network error: ${error instanceof Error ? error.message : 'Unknown error'}` };
     }
   }
 }

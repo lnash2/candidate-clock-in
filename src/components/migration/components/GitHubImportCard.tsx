@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Github, Download, Database, FileText, CheckCircle, AlertCircle, Loader2, GitBranch, RefreshCw } from 'lucide-react';
+import { Github, Download, Database, FileText, CheckCircle, AlertCircle, Loader2, GitBranch, RefreshCw, Folder } from 'lucide-react';
 import { GitHubLfsService } from '../services/GitHubLfsService';
 
 interface ImportStatus {
@@ -29,6 +29,12 @@ export const GitHubImportCard = () => {
   const [customBranch, setCustomBranch] = useState('');
   const [useCustomBranch, setUseCustomBranch] = useState(false);
   const [availableBranches, setAvailableBranches] = useState<string[]>(['main', 'leg-sql']);
+  const [selectedFolder, setSelectedFolder] = useState('leg-sql');
+  const [customFolder, setCustomFolder] = useState('');
+  const [useCustomFolder, setUseCustomFolder] = useState(false);
+  const [availableFolders, setAvailableFolders] = useState<string[]>(['leg-sql']);
+  const [folderFiles, setFolderFiles] = useState<string[]>([]);
+  const [isLoadingFolders, setIsLoadingFolders] = useState(false);
   const [validationStatus, setValidationStatus] = useState<{ valid: boolean; message?: string } | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const { toast } = useToast();
@@ -37,6 +43,18 @@ export const GitHubImportCard = () => {
     loadBranches();
   }, []);
 
+  useEffect(() => {
+    if (getCurrentBranch()) {
+      loadFolders();
+    }
+  }, [selectedBranch, customBranch, useCustomBranch]);
+
+  useEffect(() => {
+    if (getCurrentBranch() && getCurrentFolder()) {
+      loadFolderFiles();
+    }
+  }, [selectedBranch, customBranch, useCustomBranch, selectedFolder, customFolder, useCustomFolder]);
+
   const loadBranches = async () => {
     const { branches } = await GitHubLfsService.getBranches();
     if (branches.length > 0) {
@@ -44,12 +62,54 @@ export const GitHubImportCard = () => {
     }
   };
 
+  const loadFolders = async () => {
+    const branch = getCurrentBranch();
+    if (!branch.trim()) return;
+
+    setIsLoadingFolders(true);
+    try {
+      const { folders, error } = await GitHubLfsService.getFolders(branch);
+      if (error) {
+        console.warn('Failed to load folders:', error);
+        setAvailableFolders(['leg-sql']); // fallback
+      } else {
+        setAvailableFolders(['leg-sql', ...folders.filter(f => f !== 'leg-sql')]);
+      }
+    } catch (error) {
+      console.warn('Error loading folders:', error);
+      setAvailableFolders(['leg-sql']); // fallback
+    } finally {
+      setIsLoadingFolders(false);
+    }
+  };
+
+  const loadFolderFiles = async () => {
+    const branch = getCurrentBranch();
+    const folder = getCurrentFolder();
+    if (!branch.trim() || !folder.trim()) return;
+
+    try {
+      const { files } = await GitHubLfsService.getSqlFilesInFolder(folder, branch);
+      setFolderFiles(files);
+    } catch (error) {
+      console.warn('Error loading folder files:', error);
+      setFolderFiles([]);
+    }
+  };
+
+  const getCurrentFolder = () => useCustomFolder ? customFolder : selectedFolder;
+
   const getCurrentBranch = () => useCustomBranch ? customBranch : selectedBranch;
 
   const validateBranchAndFiles = async () => {
     const branch = getCurrentBranch();
+    const folder = getCurrentFolder();
     if (!branch.trim()) {
       setValidationStatus({ valid: false, message: 'Please enter a branch name' });
+      return;
+    }
+    if (!folder.trim()) {
+      setValidationStatus({ valid: false, message: 'Please enter a folder name' });
       return;
     }
 
@@ -64,9 +124,9 @@ export const GitHubImportCard = () => {
         return;
       }
 
-      // Check if files exist
-      const schemaCheck = await GitHubLfsService.checkFileExists('leg-sql/legacy_schema.sql', branch);
-      const dataCheck = await GitHubLfsService.checkFileExists('leg-sql/legacy_data.sql', branch);
+      // Check if files exist in the selected folder
+      const schemaCheck = await GitHubLfsService.checkFileExists(`${folder}/legacy_schema.sql`, branch);
+      const dataCheck = await GitHubLfsService.checkFileExists(`${folder}/legacy_data.sql`, branch);
 
       if (!schemaCheck.exists || !dataCheck.exists) {
         const missingFiles = [];
@@ -75,12 +135,12 @@ export const GitHubImportCard = () => {
         
         setValidationStatus({ 
           valid: false, 
-          message: `Missing files in branch '${branch}': ${missingFiles.join(', ')}` 
+          message: `Missing files in folder '${folder}' on branch '${branch}': ${missingFiles.join(', ')}` 
         });
         return;
       }
 
-      setValidationStatus({ valid: true, message: `Branch '${branch}' validated successfully` });
+      setValidationStatus({ valid: true, message: `Branch '${branch}' and folder '${folder}' validated successfully` });
     } catch (error) {
       setValidationStatus({ 
         valid: false, 
@@ -188,7 +248,8 @@ export const GitHubImportCard = () => {
       });
 
       // Fetch schema file
-      const schemaResult = await GitHubLfsService.fetchSchemaFile(branch);
+      const folder = getCurrentFolder();
+      const schemaResult = await GitHubLfsService.fetchSchemaFile(branch, folder);
       if (!schemaResult.success || !schemaResult.content) {
         throw new Error(schemaResult.error || 'Failed to fetch schema file');
       }
@@ -212,7 +273,7 @@ export const GitHubImportCard = () => {
       });
 
       // Fetch data file
-      const dataResult = await GitHubLfsService.fetchDataFile(branch);
+      const dataResult = await GitHubLfsService.fetchDataFile(branch, folder);
       if (!dataResult.success || !dataResult.content) {
         throw new Error(dataResult.error || 'Failed to fetch data file');
       }
@@ -415,6 +476,79 @@ export const GitHubImportCard = () => {
           )}
         </div>
 
+        {/* Folder Selection */}
+        <div className="space-y-4 border rounded-lg p-4 bg-muted/50">
+          <h4 className="font-medium flex items-center gap-2">
+            <Folder className="h-4 w-4" />
+            Folder Selection
+          </h4>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Select Folder</Label>
+              <Select 
+                value={useCustomFolder ? 'custom' : selectedFolder} 
+                onValueChange={(value) => {
+                  if (value === 'custom') {
+                    setUseCustomFolder(true);
+                  } else {
+                    setUseCustomFolder(false);
+                    setSelectedFolder(value);
+                    setValidationStatus(null);
+                  }
+                }}
+                disabled={isLoadingFolders}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose folder" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableFolders.map((folder) => (
+                    <SelectItem key={folder} value={folder}>
+                      {folder}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="custom">Custom folder...</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {useCustomFolder && (
+              <div className="space-y-2">
+                <Label>Custom Folder Path</Label>
+                <Input
+                  value={customFolder}
+                  onChange={(e) => {
+                    setCustomFolder(e.target.value);
+                    setValidationStatus(null);
+                  }}
+                  placeholder="Enter folder path"
+                />
+              </div>
+            )}
+          </div>
+
+          {folderFiles.length > 0 && (
+            <div className="mt-3">
+              <Label className="text-sm font-medium">SQL Files Found:</Label>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {folderFiles.map((file) => (
+                  <Badge key={file} variant="outline" className="text-xs">
+                    {file}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {isLoadingFolders && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Loading folders...
+            </div>
+          )}
+        </div>
+
         <div className="space-y-2">
           <h4 className="font-medium flex items-center gap-2">
             <FileText className="h-4 w-4" />
@@ -423,7 +557,8 @@ export const GitHubImportCard = () => {
           <div className="text-sm text-muted-foreground space-y-1">
             <p><strong>Repository:</strong> lnash2/candidate-clock-in</p>
             <p><strong>Selected Branch:</strong> {getCurrentBranch() || 'None selected'}</p>
-            <p><strong>Files:</strong> leg-sql/legacy_schema.sql, leg-sql/legacy_data.sql</p>
+            <p><strong>Selected Folder:</strong> {getCurrentFolder() || 'None selected'}</p>
+            <p><strong>Files:</strong> {getCurrentFolder()}/legacy_schema.sql, {getCurrentFolder()}/legacy_data.sql</p>
             <p><strong>Transformation:</strong> All table names will get _PCRM suffix</p>
           </div>
         </div>
