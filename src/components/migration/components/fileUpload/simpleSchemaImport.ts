@@ -8,12 +8,20 @@ export interface SimpleImportResult {
   schemaName: string;
 }
 
-// Just split by semicolons and clean up
+// Properly filter PostgreSQL dump files
 const prepareSql = (sql: string): string[] => {
   return sql
     .split(';')
     .map(s => s.trim())
-    .filter(s => s && !s.startsWith('--') && !s.match(/^(SET|SELECT pg_catalog)/i));
+    .filter(s => {
+      if (!s) return false;
+      if (s.startsWith('--')) return false;
+      if (s.match(/^(SET|SELECT pg_catalog|\\)/i)) return false;
+      if (s.match(/^(Owner:|Schema:|Type:|Comment:)/i)) return false;
+      if (s.match(/^(COMMENT ON|ALTER .* OWNER TO)/i)) return false;
+      if (s.match(/^(GRANT|REVOKE)/i)) return false;
+      return true;
+    });
 };
 
 // Execute a single SQL statement
