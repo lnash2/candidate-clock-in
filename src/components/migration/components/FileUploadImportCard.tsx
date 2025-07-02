@@ -55,9 +55,20 @@ export const FileUploadImportCard = () => {
       return { valid: false, error: 'File is empty' };
     }
     
-    // Check if it's a Git LFS pointer
+    // Check if it's a Git LFS pointer - this is the main issue
     if (content.includes('version https://git-lfs.github.com/spec/v1')) {
-      return { valid: false, error: 'This appears to be a Git LFS pointer file, not the actual SQL content' };
+      return { 
+        valid: false, 
+        error: 'This is a Git LFS pointer file, not the actual SQL content. Please download the actual SQL file from GitHub or use git-lfs to get the real file content.' 
+      };
+    }
+    
+    // Check for other common LFS indicators
+    if (content.includes('oid sha256:') && content.includes('size ') && content.length < 200) {
+      return { 
+        valid: false, 
+        error: 'This appears to be a Git LFS pointer file. Please download the actual SQL file content, not the pointer file.' 
+      };
     }
     
     // Basic SQL validation
