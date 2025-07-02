@@ -3,11 +3,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Upload } from 'lucide-react';
 import { useImportStatus } from './hooks/useImportStatus';
 import { useFileUpload } from './hooks/useFileUpload';
-import { useImportActions } from './hooks/useImportActions';
+import { useSimpleImport } from './hooks/useSimpleImport';
 import { ImportStatusDisplay } from './components/ImportStatusDisplay';
 import { FileUploadArea } from './components/FileUploadArea';
 import { UploadedFilesList } from './components/UploadedFilesList';
-import { ImportButtons } from './components/ImportButtons';
 
 export const FileUploadImportCard = () => {
   const { importStatus, updateStatus, updateProgress } = useImportStatus();
@@ -22,11 +21,9 @@ export const FileUploadImportCard = () => {
   } = useFileUpload(updateProgress);
 
   const {
-    handleTestSchema,
-    handleImportSchemaOnly,
-    handleImportDataOnly,
-    handleImportBoth
-  } = useImportActions(uploadedFiles, updateStatus, updateProgress);
+    testImport,
+    importToLegacySchema
+  } = useSimpleImport(uploadedFiles, updateStatus, updateProgress);
 
   const handleFileProcessingWrapper = async (files: File[]) => {
     updateStatus({
@@ -79,26 +76,27 @@ export const FileUploadImportCard = () => {
           onRemoveFile={removeFile}
         />
 
-        {/* Import Information */}
-        <div className="space-y-2">
-          <h4 className="font-medium">Legacy Schema Import</h4>
-          <div className="text-sm text-muted-foreground space-y-1">
-            <p><strong>Import Target:</strong> Creates separate "legacy_pcrm" schema</p>
-            <p><strong>Processing:</strong> Imports SQL exactly as-is with conflict handling</p>
-            <p><strong>Files:</strong> Upload schema and data files separately or together</p>
-            <p><strong>Size Limit:</strong> No file size restrictions</p>
-            <p><strong>Safety:</strong> Uses DROP IF EXISTS for clean imports</p>
+        {/* Simple Import Actions */}
+        {uploadedFiles.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <button
+                onClick={testImport}
+                disabled={isImporting}
+                className="flex-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 px-4 py-2 rounded-md disabled:opacity-50"
+              >
+                Test Schema
+              </button>
+              <button
+                onClick={importToLegacySchema}
+                disabled={isImporting}
+                className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md disabled:opacity-50"
+              >
+                Import to Legacy Schema
+              </button>
+            </div>
           </div>
-        </div>
-
-        <ImportButtons
-          uploadedFiles={uploadedFiles}
-          isImporting={isImporting}
-          onTestSchema={handleTestSchema}
-          onImportSchemaOnly={handleImportSchemaOnly}
-          onImportDataOnly={handleImportDataOnly}
-          onImportBoth={handleImportBoth}
-        />
+        )}
       </CardContent>
     </Card>
   );
