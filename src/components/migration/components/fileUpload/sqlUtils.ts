@@ -70,6 +70,72 @@ export const transformSqlWithPcrmSuffix = (sqlContent: string): string => {
     }
   );
 
+  // Transform CREATE TYPE statements (enums, custom types)
+  transformedSql = transformedSql.replace(
+    /CREATE TYPE\s+([`"]?)(\w+)\1/gi,
+    (match, quote, typeName) => {
+      if (typeName.toLowerCase().endsWith('_pcrm')) {
+        return match; // Already has suffix
+      }
+      return `CREATE TYPE ${quote}${typeName}_PCRM${quote}`;
+    }
+  );
+
+  // Transform CREATE FUNCTION statements
+  transformedSql = transformedSql.replace(
+    /CREATE(?:\s+OR\s+REPLACE)?\s+FUNCTION\s+([`"]?)(\w+)\1/gi,
+    (match, quote, functionName) => {
+      if (functionName.toLowerCase().endsWith('_pcrm')) {
+        return match; // Already has suffix
+      }
+      return match.replace(functionName, `${functionName}_PCRM`);
+    }
+  );
+
+  // Transform CREATE INDEX statements
+  transformedSql = transformedSql.replace(
+    /CREATE(?:\s+UNIQUE)?\s+INDEX\s+([`"]?)(\w+)\1/gi,
+    (match, quote, indexName) => {
+      if (indexName.toLowerCase().endsWith('_pcrm')) {
+        return match; // Already has suffix
+      }
+      return match.replace(indexName, `${indexName}_PCRM`);
+    }
+  );
+
+  // Transform CREATE SEQUENCE statements
+  transformedSql = transformedSql.replace(
+    /CREATE SEQUENCE\s+([`"]?)(\w+)\1/gi,
+    (match, quote, sequenceName) => {
+      if (sequenceName.toLowerCase().endsWith('_pcrm')) {
+        return match; // Already has suffix
+      }
+      return `CREATE SEQUENCE ${quote}${sequenceName}_PCRM${quote}`;
+    }
+  );
+
+  // Transform CREATE TRIGGER statements
+  transformedSql = transformedSql.replace(
+    /CREATE TRIGGER\s+([`"]?)(\w+)\1/gi,
+    (match, quote, triggerName) => {
+      if (triggerName.toLowerCase().endsWith('_pcrm')) {
+        return match; // Already has suffix
+      }
+      return `CREATE TRIGGER ${quote}${triggerName}_PCRM${quote}`;
+    }
+  );
+
+  // Transform CREATE VIEW statements
+  transformedSql = transformedSql.replace(
+    /CREATE VIEW\s+([`"]?)(\w+)\1/gi,
+    (match, quote, viewName) => {
+      if (viewName.toLowerCase().endsWith('_pcrm')) {
+        return match; // Already has suffix
+      }
+      return `CREATE VIEW ${quote}${viewName}_PCRM${quote}`;
+    }
+  );
+
   // Transform INSERT INTO statements
   transformedSql = transformedSql.replace(
     /INSERT INTO\s+([`"]?)(\w+)\1/gi,
@@ -89,6 +155,45 @@ export const transformSqlWithPcrmSuffix = (sqlContent: string): string => {
         return match; // Already has suffix
       }
       return `REFERENCES ${quote}${tableName}_PCRM${quote}`;
+    }
+  );
+
+  // Transform type references in function parameters and return types
+  transformedSql = transformedSql.replace(
+    /\b(\w+)(?=\s*(?:\[\])?(?:\s*,|\s*\)|\s+DEFAULT|\s*$))/gi,
+    (match, typeName) => {
+      // Only transform custom types, not built-in PostgreSQL types
+      const builtinTypes = ['integer', 'text', 'varchar', 'char', 'boolean', 'date', 'timestamp', 'numeric', 'decimal', 'real', 'bigint', 'smallint', 'serial', 'bigserial', 'uuid', 'json', 'jsonb', 'bytea', 'inet', 'cidr', 'macaddr', 'xml', 'money', 'point', 'line', 'lseg', 'box', 'path', 'polygon', 'circle', 'interval', 'time', 'timetz', 'timestamptz'];
+      
+      if (builtinTypes.includes(typeName.toLowerCase()) || typeName.toLowerCase().endsWith('_pcrm')) {
+        return match;
+      }
+      
+      // Check if this looks like a custom type (not a column name or keyword)
+      if (/^[a-z_][a-z0-9_]*$/i.test(typeName) && typeName.length > 2) {
+        return `${typeName}_PCRM`;
+      }
+      
+      return match;
+    }
+  );
+
+  // Transform enum references in INSERT statements and other contexts
+  transformedSql = transformedSql.replace(
+    /::(\w+)/gi,
+    (match, typeName) => {
+      if (typeName.toLowerCase().endsWith('_pcrm')) {
+        return match; // Already has suffix
+      }
+      
+      // Only transform custom types, not built-in types
+      const builtinTypes = ['integer', 'text', 'varchar', 'char', 'boolean', 'date', 'timestamp', 'numeric', 'decimal', 'real', 'bigint', 'smallint', 'uuid', 'json', 'jsonb'];
+      
+      if (builtinTypes.includes(typeName.toLowerCase())) {
+        return match;
+      }
+      
+      return `::${typeName}_PCRM`;
     }
   );
 
