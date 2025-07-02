@@ -105,43 +105,46 @@ export class GitHubLfsService {
 
   static async fetchLfsFile(repoOwner: string, repoName: string, filePath: string, branch: string = 'main'): Promise<GitHubLfsResponse> {
     try {
-      // First, get the LFS pointer from the regular file
-      const pointerResponse = await fetch(
+      // First, try to get the file content directly from GitHub API
+      const response = await fetch(
         `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}?ref=${branch}`,
         { headers: this.getHeaders() }
       );
 
-      if (!pointerResponse.ok) {
-        throw new Error(`Failed to fetch LFS pointer: ${pointerResponse.statusText}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch file: ${response.statusText}`);
       }
 
-      const pointerData = await pointerResponse.json();
-      const pointerContent = atob(pointerData.content.replace(/\s/g, ''));
+      const data = await response.json();
       
-      // Parse the LFS pointer to get the OID
-      const lfsPointer = this.parseLfsPointer(pointerContent);
-      if (!lfsPointer) {
-        throw new Error('Invalid LFS pointer format');
+      // Check if this is a regular file (not LFS)
+      if (data.content && data.encoding === 'base64') {
+        // This is a regular file, decode the base64 content
+        const content = atob(data.content.replace(/\s/g, ''));
+        return {
+          success: true,
+          content,
+          size: content.length
+        };
       }
-
-      // Fetch the actual file content from GitHub LFS
-      const lfsResponse = await fetch(
+      
+      // If no content, might be LFS - try the raw endpoint
+      const rawResponse = await fetch(
         `https://github.com/${repoOwner}/${repoName}/raw/${branch}/${filePath}`
       );
 
-      if (!lfsResponse.ok) {
-        throw new Error(`Failed to fetch LFS content: ${lfsResponse.statusText}`);
+      if (!rawResponse.ok) {
+        throw new Error(`Failed to fetch raw content: ${rawResponse.statusText}`);
       }
 
-      const content = await lfsResponse.text();
-
+      const content = await rawResponse.text();
       return {
         success: true,
         content,
         size: content.length
       };
     } catch (error) {
-      console.error('GitHub LFS fetch error:', error);
+      console.error('GitHub file fetch error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred'
