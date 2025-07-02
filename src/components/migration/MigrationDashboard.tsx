@@ -10,6 +10,7 @@ import { MigrationSettingsCard } from './components/MigrationSettingsCard';
 import { MigrationStatusList } from './components/MigrationStatusList';
 import { LiveSyncCard } from './components/LiveSyncCard';
 import { ConnectionDiagnostics } from './components/ConnectionDiagnostics';
+import { GitHubImportCard } from './components/GitHubImportCard';
 
 const MigrationDashboard = () => {
   const [migrationStatus, setMigrationStatus] = useState<MigrationStatus[]>([]);
@@ -46,13 +47,18 @@ const MigrationDashboard = () => {
         <h1 className="text-2xl font-bold">Legacy Data Migration Dashboard</h1>
       </div>
 
-      <Tabs defaultValue="diagnostics" className="space-y-4">
+      <Tabs defaultValue="github-import" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="github-import">GitHub Import</TabsTrigger>
           <TabsTrigger value="diagnostics">Connection Diagnostics</TabsTrigger>
           <TabsTrigger value="migrate">Start Migration</TabsTrigger>
           <TabsTrigger value="status">Migration Status</TabsTrigger>
           <TabsTrigger value="sync">Live Sync</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="github-import" className="space-y-4">
+          <GitHubImportCard />
+        </TabsContent>
 
         <TabsContent value="diagnostics" className="space-y-4">
           <ConnectionDiagnostics />

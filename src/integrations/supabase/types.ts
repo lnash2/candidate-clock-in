@@ -312,6 +312,33 @@ export type Database = {
         }
         Relationships: []
       }
+      legacy_import_log: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          import_status: string
+          records_imported: number | null
+          table_name: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          import_status?: string
+          records_imported?: number | null
+          table_name: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          import_status?: string
+          records_imported?: number | null
+          table_name?: string
+        }
+        Relationships: []
+      }
       migration_status: {
         Row: {
           completed_at: string | null
@@ -369,90 +396,6 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
-        }
-        Relationships: []
-      }
-      notes_pcrm: {
-        Row: {
-          category: string | null
-          content: string | null
-          created_at_legacy: string | null
-          id: string
-          legacy_id: string
-          legacy_user_id: string | null
-          migrated_at: string
-          migration_source: string | null
-          priority: string | null
-          status: string | null
-          title: string | null
-          updated_at_legacy: string | null
-        }
-        Insert: {
-          category?: string | null
-          content?: string | null
-          created_at_legacy?: string | null
-          id?: string
-          legacy_id: string
-          legacy_user_id?: string | null
-          migrated_at?: string
-          migration_source?: string | null
-          priority?: string | null
-          status?: string | null
-          title?: string | null
-          updated_at_legacy?: string | null
-        }
-        Update: {
-          category?: string | null
-          content?: string | null
-          created_at_legacy?: string | null
-          id?: string
-          legacy_id?: string
-          legacy_user_id?: string | null
-          migrated_at?: string
-          migration_source?: string | null
-          priority?: string | null
-          status?: string | null
-          title?: string | null
-          updated_at_legacy?: string | null
-        }
-        Relationships: []
-      }
-      users_pcrm: {
-        Row: {
-          created_at_legacy: string | null
-          email: string | null
-          first_name: string | null
-          id: string
-          last_name: string | null
-          legacy_id: string
-          migrated_at: string
-          migration_source: string | null
-          updated_at_legacy: string | null
-          username: string | null
-        }
-        Insert: {
-          created_at_legacy?: string | null
-          email?: string | null
-          first_name?: string | null
-          id?: string
-          last_name?: string | null
-          legacy_id: string
-          migrated_at?: string
-          migration_source?: string | null
-          updated_at_legacy?: string | null
-          username?: string | null
-        }
-        Update: {
-          created_at_legacy?: string | null
-          email?: string | null
-          first_name?: string | null
-          id?: string
-          last_name?: string | null
-          legacy_id?: string
-          migrated_at?: string
-          migration_source?: string | null
-          updated_at_legacy?: string | null
-          username?: string | null
         }
         Relationships: []
       }
@@ -592,7 +535,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      execute_sql: {
+        Args: { sql_statement: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
