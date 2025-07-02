@@ -61,100 +61,109 @@ export const transformSqlWithPcrmSuffix = (sqlContent: string): string => {
   
   // Transform CREATE TABLE statements
   let transformedSql = cleanedSql.replace(
-    /CREATE TABLE\s+([`"]?)(\w+)\1/gi,
-    (match, quote, tableName) => {
+    /CREATE TABLE\s+(?:([`"]?)(\w+)\1\.)?([`"]?)(\w+)\3/gi,
+    (match, schemaQuote, schema, objQuote, tableName) => {
       if (tableName.toLowerCase().endsWith('_pcrm')) {
         return match; // Already has suffix
       }
-      return `CREATE TABLE ${quote}${tableName}_PCRM${quote}`;
+      const schemaPrefix = schema ? `${schemaQuote}${schema}${schemaQuote}.` : '';
+      return `CREATE TABLE ${schemaPrefix}${objQuote}${tableName}_PCRM${objQuote}`;
     }
   );
 
   // Transform CREATE TYPE statements (enums, custom types)
   transformedSql = transformedSql.replace(
-    /CREATE TYPE\s+([`"]?)(\w+)\1/gi,
-    (match, quote, typeName) => {
+    /CREATE TYPE\s+(?:([`"]?)(\w+)\1\.)?([`"]?)(\w+)\3/gi,
+    (match, schemaQuote, schema, objQuote, typeName) => {
       if (typeName.toLowerCase().endsWith('_pcrm')) {
         return match; // Already has suffix
       }
-      return `CREATE TYPE ${quote}${typeName}_PCRM${quote}`;
+      const schemaPrefix = schema ? `${schemaQuote}${schema}${schemaQuote}.` : '';
+      return `CREATE TYPE ${schemaPrefix}${objQuote}${typeName}_PCRM${objQuote}`;
     }
   );
 
   // Transform CREATE FUNCTION statements
   transformedSql = transformedSql.replace(
-    /CREATE(?:\s+OR\s+REPLACE)?\s+FUNCTION\s+([`"]?)(\w+)\1/gi,
-    (match, quote, functionName) => {
+    /CREATE(?:\s+OR\s+REPLACE)?\s+FUNCTION\s+(?:([`"]?)(\w+)\1\.)?([`"]?)(\w+)\3/gi,
+    (match, schemaQuote, schema, objQuote, functionName) => {
       if (functionName.toLowerCase().endsWith('_pcrm')) {
         return match; // Already has suffix
       }
-      return match.replace(functionName, `${functionName}_PCRM`);
+      const schemaPrefix = schema ? `${schemaQuote}${schema}${schemaQuote}.` : '';
+      return match.replace(new RegExp(`${schemaPrefix}${objQuote}${functionName}${objQuote}`), `${schemaPrefix}${objQuote}${functionName}_PCRM${objQuote}`);
     }
   );
 
   // Transform CREATE INDEX statements
   transformedSql = transformedSql.replace(
-    /CREATE(?:\s+UNIQUE)?\s+INDEX\s+([`"]?)(\w+)\1/gi,
-    (match, quote, indexName) => {
+    /CREATE(?:\s+UNIQUE)?\s+INDEX\s+(?:([`"]?)(\w+)\1\.)?([`"]?)(\w+)\3/gi,
+    (match, schemaQuote, schema, objQuote, indexName) => {
       if (indexName.toLowerCase().endsWith('_pcrm')) {
         return match; // Already has suffix
       }
-      return match.replace(indexName, `${indexName}_PCRM`);
+      const schemaPrefix = schema ? `${schemaQuote}${schema}${schemaQuote}.` : '';
+      return match.replace(new RegExp(`${schemaPrefix}${objQuote}${indexName}${objQuote}`), `${schemaPrefix}${objQuote}${indexName}_PCRM${objQuote}`);
     }
   );
 
   // Transform CREATE SEQUENCE statements
   transformedSql = transformedSql.replace(
-    /CREATE SEQUENCE\s+([`"]?)(\w+)\1/gi,
-    (match, quote, sequenceName) => {
+    /CREATE SEQUENCE\s+(?:([`"]?)(\w+)\1\.)?([`"]?)(\w+)\3/gi,
+    (match, schemaQuote, schema, objQuote, sequenceName) => {
       if (sequenceName.toLowerCase().endsWith('_pcrm')) {
         return match; // Already has suffix
       }
-      return `CREATE SEQUENCE ${quote}${sequenceName}_PCRM${quote}`;
+      const schemaPrefix = schema ? `${schemaQuote}${schema}${schemaQuote}.` : '';
+      return `CREATE SEQUENCE ${schemaPrefix}${objQuote}${sequenceName}_PCRM${objQuote}`;
     }
   );
 
   // Transform CREATE TRIGGER statements
   transformedSql = transformedSql.replace(
-    /CREATE TRIGGER\s+([`"]?)(\w+)\1/gi,
-    (match, quote, triggerName) => {
+    /CREATE TRIGGER\s+(?:([`"]?)(\w+)\1\.)?([`"]?)(\w+)\3/gi,
+    (match, schemaQuote, schema, objQuote, triggerName) => {
       if (triggerName.toLowerCase().endsWith('_pcrm')) {
         return match; // Already has suffix
       }
-      return `CREATE TRIGGER ${quote}${triggerName}_PCRM${quote}`;
+      const schemaPrefix = schema ? `${schemaQuote}${schema}${schemaQuote}.` : '';
+      return `CREATE TRIGGER ${schemaPrefix}${objQuote}${triggerName}_PCRM${objQuote}`;
     }
   );
 
   // Transform CREATE VIEW statements
   transformedSql = transformedSql.replace(
-    /CREATE VIEW\s+([`"]?)(\w+)\1/gi,
-    (match, quote, viewName) => {
+    /CREATE VIEW\s+(?:([`"]?)(\w+)\1\.)?([`"]?)(\w+)\3/gi,
+    (match, schemaQuote, schema, objQuote, viewName) => {
       if (viewName.toLowerCase().endsWith('_pcrm')) {
         return match; // Already has suffix
       }
-      return `CREATE VIEW ${quote}${viewName}_PCRM${quote}`;
+      const schemaPrefix = schema ? `${schemaQuote}${schema}${schemaQuote}.` : '';
+      return `CREATE VIEW ${schemaPrefix}${objQuote}${viewName}_PCRM${objQuote}`;
     }
   );
 
   // Transform INSERT INTO statements
   transformedSql = transformedSql.replace(
-    /INSERT INTO\s+([`"]?)(\w+)\1/gi,
-    (match, quote, tableName) => {
+    /INSERT INTO\s+(?:([`"]?)(\w+)\1\.)?([`"]?)(\w+)\3/gi,
+    (match, schemaQuote, schema, objQuote, tableName) => {
       if (tableName.toLowerCase().endsWith('_pcrm')) {
         return match; // Already has suffix
       }
-      return `INSERT INTO ${quote}${tableName}_PCRM${quote}`;
+      const schemaPrefix = schema ? `${schemaQuote}${schema}${schemaQuote}.` : '';
+      return `INSERT INTO ${schemaPrefix}${objQuote}${tableName}_PCRM${objQuote}`;
     }
   );
 
   // Transform REFERENCES in foreign keys
   transformedSql = transformedSql.replace(
-    /REFERENCES\s+([`"]?)(\w+)\1/gi,
-    (match, quote, tableName) => {
+    /REFERENCES\s+(?:([`"]?)(\w+)\1\.)?([`"]?)(\w+)\3/gi,
+    (match, schemaQuote, schema, objQuote, tableName) => {
       if (tableName.toLowerCase().endsWith('_pcrm')) {
         return match; // Already has suffix
       }
-      return `REFERENCES ${quote}${tableName}_PCRM${quote}`;
+      const schemaPrefix = schema ? `${schemaQuote}${schema}${schemaQuote}.` : '';
+      return `REFERENCES ${schemaPrefix}${objQuote}${tableName}_PCRM${objQuote}`;
     }
   );
 
