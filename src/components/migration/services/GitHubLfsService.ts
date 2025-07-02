@@ -193,7 +193,7 @@ export class GitHubLfsService {
       // Validate it's SQL content - if it's still an LFS pointer, return error
       if (!this.isValidSqlContent(content, filePath)) {
         if (content.includes('version https://git-lfs.github.com/spec/v1')) {
-          throw new Error(`File ${filePath} is stored in Git LFS and cannot be accessed directly. Please download the actual SQL file or use a repository without LFS.`);
+          throw new Error(`Git LFS files cannot be accessed directly from the browser due to CORS restrictions. Please either:\n\n1. Clone the repository locally and copy the SQL files manually\n2. Use a repository without Git LFS\n3. Download the files directly from GitHub and upload them to your project\n\nThe files are stored in Git LFS and require special handling to access.`);
         } else {
           throw new Error(`File ${filePath} does not contain valid SQL content.`);
         }
@@ -207,6 +207,12 @@ export class GitHubLfsService {
       };
     } catch (error) {
       console.error('💥 Raw endpoint fetch error:', error);
+      
+      // If it's a CORS/fetch error, provide helpful message
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        throw new Error(`Cannot access Git LFS files due to browser CORS restrictions.\n\nThe repository appears to use Git LFS (Large File Storage) for SQL files. To import your data:\n\n1. Clone the repository locally: git clone https://github.com/${repoOwner}/${repoName}.git\n2. Copy the SQL files from the leg-sql folder\n3. Upload them directly to your project\n\nAlternatively, store your SQL files in a regular repository without Git LFS.`);
+      }
+      
       throw error;
     }
   }
