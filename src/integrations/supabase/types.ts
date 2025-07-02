@@ -541,8 +541,7 @@ export type Database = {
       }
     }
     Enums: {
-      user_roles_enum: "standard" | "premium"
-      user_roles_enum_pcrm: "standard" | "premium"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -657,9 +656,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      user_roles_enum: ["standard", "premium"],
-      user_roles_enum_pcrm: ["standard", "premium"],
-    },
+    Enums: {},
   },
 } as const
