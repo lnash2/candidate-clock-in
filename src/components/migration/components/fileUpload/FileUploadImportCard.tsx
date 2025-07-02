@@ -81,12 +81,13 @@ export const FileUploadImportCard = () => {
 
         {/* Import Information */}
         <div className="space-y-2">
-          <h4 className="font-medium">Import Details</h4>
+          <h4 className="font-medium">Legacy Schema Import</h4>
           <div className="text-sm text-muted-foreground space-y-1">
-            <p><strong>Files Required:</strong> legacy_schema.sql and legacy_data.sql</p>
-            <p><strong>Transformation:</strong> All table names will get _PCRM suffix</p>
-            <p><strong>Processing:</strong> Large files are processed in chunks for reliability</p>
-            <p><strong>File Size:</strong> No limitations - handles any size including 100MB+ files</p>
+            <p><strong>Import Target:</strong> Creates separate "legacy_pcrm" schema</p>
+            <p><strong>Processing:</strong> Imports SQL exactly as-is with conflict handling</p>
+            <p><strong>Files:</strong> Upload schema and data files separately or together</p>
+            <p><strong>Size Limit:</strong> No file size restrictions</p>
+            <p><strong>Safety:</strong> Uses DROP IF EXISTS for clean imports</p>
           </div>
         </div>
 

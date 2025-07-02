@@ -1,22 +1,15 @@
-// Validate that a SQL statement is safe and executable
+// Basic SQL validation for legacy imports
 export const validateSqlStatement = (statement: string): { valid: boolean; error?: string } => {
-  const trimmed = statement.trim().toUpperCase();
+  const trimmed = statement.trim();
   
   // Must not be empty
   if (!trimmed) {
     return { valid: false, error: 'Empty statement' };
   }
   
-  // Must be a valid SQL statement type
-  const validStatements = ['CREATE', 'INSERT', 'UPDATE', 'DELETE', 'SELECT', 'ALTER', 'DROP'];
-  const startsWithValidKeyword = validStatements.some(keyword => trimmed.startsWith(keyword));
-  
-  if (!startsWithValidKeyword) {
-    return { valid: false, error: `Invalid SQL statement: ${statement.substring(0, 50)}...` };
-  }
-  
-  // Check for dangerous operations
-  if (trimmed.includes('DROP DATABASE') || trimmed.includes('DROP SCHEMA')) {
+  // Check for extremely dangerous operations only
+  const upperStatement = trimmed.toUpperCase();
+  if (upperStatement.includes('DROP DATABASE') || upperStatement.includes('DROP SCHEMA')) {
     return { valid: false, error: 'Dangerous operation not allowed' };
   }
   

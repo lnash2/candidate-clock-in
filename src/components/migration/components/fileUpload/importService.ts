@@ -1,6 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
 import { ImportStatus } from './types';
-import { splitSqlIntoStatements } from './sqlParsing';
 
 export interface ImportResult {
   success: boolean;
@@ -53,6 +52,14 @@ export const executeSingleStatement = async (
   return result;
 };
 
+// Simple SQL statement splitting - just by semicolons
+const splitSqlStatements = (sql: string): string[] => {
+  return sql
+    .split(';')
+    .map(s => s.trim())
+    .filter(s => s.length > 0 && !s.match(/^--/)); // Remove empty and comment lines
+};
+
 export const processSqlInBatches = async (
   sql: string, 
   description: string, 
@@ -60,7 +67,7 @@ export const processSqlInBatches = async (
   updateProgress: (progress: number, message?: string) => void,
   currentStep: 'importing-schema' | 'importing-data'
 ): Promise<ImportResult> => {
-  const statements = splitSqlIntoStatements(sql);
+  const statements = splitSqlStatements(sql);
   const totalStatements = statements.length;
   let processedStatements = 0;
   

@@ -1,10 +1,7 @@
 import { useToast } from '@/hooks/use-toast';
 import { UploadedFile, ImportStatus } from '../types';
 import { readLargeFileForImport } from '../fileUtils';
-import { transformSqlWithPcrmSuffix } from '../sqlTransformation';
-import { splitSqlIntoStatements } from '../sqlParsing';
-import { processSqlInBatches } from '../importService';
-import { BATCH_SIZES } from '../constants';
+import { importSqlToLegacySchema } from '../legacySchemaImport';
 
 export const useImportActions = (
   uploadedFiles: UploadedFile[],
@@ -29,22 +26,24 @@ export const useImportActions = (
       updateStatus({
         step: 'importing-schema',
         progress: 40,
-        message: 'Testing schema parsing and transformation...'
+        message: 'Testing schema import (dry run)...'
       });
 
       const schemaContent = schemaFile.content || await readLargeFileForImport(schemaFile.file);
-      const transformedSchema = transformSqlWithPcrmSuffix(schemaContent);
-      const statements = splitSqlIntoStatements(transformedSchema);
+      const result = await importSqlToLegacySchema(schemaContent, {
+        dryRun: true,
+        schemaName: 'legacy_test'
+      }, updateProgress);
 
       updateStatus({
         step: 'complete',
         progress: 100,
-        message: `Schema parsed successfully! Found ${statements.length} SQL statements ready for import.`
+        message: `Schema validated! Found ${result.totalStatements} SQL statements ready for import.`
       });
 
       toast({
         title: 'Schema Test Complete',
-        description: `Schema cleaned and parsed successfully! Found ${statements.length} valid SQL statements after removing PostgreSQL dump metadata.`,
+        description: `Schema validated successfully! Found ${result.totalStatements} statements ready for import to legacy schema.`,
       });
 
     } catch (error) {
@@ -78,24 +77,21 @@ export const useImportActions = (
     try {
       updateStatus({
         step: 'importing-schema',
-        progress: 40,
-        message: 'Importing schema with _PCRM suffix...'
+        progress: 20,
+        message: 'Importing schema to legacy_pcrm schema...'
       });
 
       const schemaContent = schemaFile.content || await readLargeFileForImport(schemaFile.file);
-      const transformedSchema = transformSqlWithPcrmSuffix(schemaContent);
-      const schemaResult = await processSqlInBatches(
-        transformedSchema, 
-        'Schema import', 
-        BATCH_SIZES.SCHEMA_IMPORT,
-        updateProgress,
-        'importing-schema'
-      );
+      const result = await importSqlToLegacySchema(schemaContent, {
+        schemaName: 'legacy_pcrm',
+        dropIfExists: true,
+        continueOnError: false
+      }, updateProgress);
       
-      if (!schemaResult.success) {
-        const errorMsg = schemaResult.failedStatement 
-          ? `Schema import failed at statement ${schemaResult.statementsExecuted + 1}: ${schemaResult.error}\n\nFailed SQL: ${schemaResult.failedStatement.substring(0, 200)}...`
-          : `Schema import failed: ${schemaResult.error}`;
+      if (!result.success) {
+        const errorMsg = result.failedStatement 
+          ? `Schema import failed at statement ${result.statementsExecuted + 1}: ${result.error}\n\nFailed SQL: ${result.failedStatement.substring(0, 200)}...`
+          : `Schema import failed: ${result.error}`;
         
         updateStatus({
           step: 'error',
@@ -105,7 +101,7 @@ export const useImportActions = (
         
         toast({
           title: 'Schema Import Failed',
-          description: `Failed after ${schemaResult.statementsExecuted} of ${schemaResult.totalStatements} statements`,
+          description: `Failed after ${result.statementsExecuted} of ${result.totalStatements} statements`,
           variant: 'destructive',
         });
         return;
@@ -114,12 +110,12 @@ export const useImportActions = (
       updateStatus({
         step: 'complete',
         progress: 100,
-        message: 'Schema import completed successfully!'
+        message: `Schema imported to ${result.schemaName} successfully!`
       });
 
       toast({
         title: 'Schema Import Complete',
-        description: `Successfully imported ${schemaResult.statementsExecuted} schema statements with _PCRM suffix`,
+        description: `Successfully imported ${result.statementsExecuted} statements to "${result.schemaName}" schema`,
       });
 
     } catch (error) {
@@ -153,24 +149,21 @@ export const useImportActions = (
     try {
       updateStatus({
         step: 'importing-data',
-        progress: 50,
-        message: 'Importing data with _PCRM suffix...'
+        progress: 20,
+        message: 'Importing data to legacy_pcrm schema...'
       });
 
       const dataContent = dataFile.content || await readLargeFileForImport(dataFile.file);
-      const transformedData = transformSqlWithPcrmSuffix(dataContent);
-      const dataResult = await processSqlInBatches(
-        transformedData, 
-        'Data import', 
-        BATCH_SIZES.DATA_IMPORT,
-        updateProgress,
-        'importing-data'
-      );
+      const result = await importSqlToLegacySchema(dataContent, {
+        schemaName: 'legacy_pcrm',
+        dropIfExists: false, // Don't drop tables when importing data
+        continueOnError: true // Continue on insert errors (duplicates, etc.)
+      }, updateProgress);
       
-      if (!dataResult.success) {
-        const errorMsg = dataResult.failedStatement 
-          ? `Data import failed at statement ${dataResult.statementsExecuted + 1}: ${dataResult.error}\n\nFailed SQL: ${dataResult.failedStatement.substring(0, 200)}...`
-          : `Data import failed: ${dataResult.error}`;
+      if (!result.success) {
+        const errorMsg = result.failedStatement 
+          ? `Data import failed at statement ${result.statementsExecuted + 1}: ${result.error}\n\nFailed SQL: ${result.failedStatement.substring(0, 200)}...`
+          : `Data import failed: ${result.error}`;
         
         updateStatus({
           step: 'error',
@@ -180,7 +173,7 @@ export const useImportActions = (
         
         toast({
           title: 'Data Import Failed',
-          description: `Failed after ${dataResult.statementsExecuted} of ${dataResult.totalStatements} statements`,
+          description: `Failed after ${result.statementsExecuted} of ${result.totalStatements} statements`,
           variant: 'destructive',
         });
         return;
@@ -189,12 +182,12 @@ export const useImportActions = (
       updateStatus({
         step: 'complete',
         progress: 100,
-        message: 'Data import completed successfully!'
+        message: `Data imported to ${result.schemaName} successfully!`
       });
 
       toast({
         title: 'Data Import Complete',
-        description: `Successfully imported ${dataResult.statementsExecuted} data statements with _PCRM suffix`,
+        description: `Successfully imported ${result.statementsExecuted} statements to "${result.schemaName}" schema`,
       });
 
     } catch (error) {
@@ -241,7 +234,7 @@ export const useImportActions = (
 
       toast({
         title: 'Import Complete',
-        description: 'SQL files imported successfully with _PCRM suffix applied to all tables.',
+        description: 'SQL files imported successfully to legacy_pcrm schema.',
       });
 
     } catch (error) {
