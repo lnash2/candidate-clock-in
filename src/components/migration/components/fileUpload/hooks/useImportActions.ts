@@ -1,7 +1,8 @@
 import { useToast } from '@/hooks/use-toast';
 import { UploadedFile, ImportStatus } from '../types';
 import { readLargeFileForImport } from '../fileUtils';
-import { transformSqlWithPcrmSuffix, splitSqlIntoStatements } from '../sqlUtils';
+import { transformSqlWithPcrmSuffix } from '../sqlTransformation';
+import { splitSqlIntoStatements } from '../sqlParsing';
 import { processSqlInBatches } from '../importService';
 import { BATCH_SIZES } from '../constants';
 

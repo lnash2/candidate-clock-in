@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { ImportStatus } from './types';
-import { splitSqlIntoStatements } from './sqlUtils';
+import { splitSqlIntoStatements } from './sqlParsing';
 
 export interface ImportResult {
   success: boolean;

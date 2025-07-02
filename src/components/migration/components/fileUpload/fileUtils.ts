@@ -1,6 +1,6 @@
 import { FILE_SIZE_LIMITS, SQL_KEYWORDS } from './constants';
 import { ValidationResult, UploadedFile } from './types';
-import { cleanPostgreSQLDump } from './sqlUtils';
+import { cleanPostgreSQLDump } from './sqlCleaning';
 
 export const detectFileType = (fileName: string, content: string): 'schema' | 'data' | 'unknown' => {
   const lowerName = fileName.toLowerCase();
