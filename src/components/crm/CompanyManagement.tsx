@@ -5,52 +5,44 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Search, Edit, Eye, Phone, Mail } from 'lucide-react';
+import { useCustomers } from '@/hooks/useCustomers';
+import { useBookings } from '@/hooks/useBookings';
 
 interface CompanyManagementProps {
-  onCompanySelect?: (companyId: number) => void;
+  onCompanySelect?: (companyId: string) => void;
 }
 
 const CompanyManagement = ({ onCompanySelect }: CompanyManagementProps) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const { customers, loading: customersLoading } = useCustomers();
+  const { bookings, loading: bookingsLoading } = useBookings();
   
-  // Mock data - in real implementation, this would come from Supabase customers table
-  const companies = [
-    {
-      id: 1,
-      company: 'Cheltenham Racecourse',
-      contactName: 'Sarah Johnson',
-      email: 'sarah@cheltenham.co.uk',
-      phone: '+44 1242 513014',
-      totalBookings: 24,
-      totalRevenue: 12500,
-      status: 'active',
-      lastContact: '2024-01-15'
-    },
-    {
-      id: 2,
-      company: 'Newmarket Training Centre',
-      contactName: 'Mike Thompson',
-      email: 'mike@newmarket.co.uk',
-      phone: '+44 1638 667171',
-      totalBookings: 18,
-      totalRevenue: 9800,
-      status: 'active',
-      lastContact: '2024-01-12'
-    },
-    {
-      id: 3,
-      company: 'Royal Windsor Stables',
-      contactName: 'Emma Davis',
-      email: 'emma@windsor-stables.co.uk',
-      phone: '+44 1753 860633',
-      totalBookings: 15,
-      totalRevenue: 7300,
-      status: 'pending',
-      lastContact: '2024-01-10'
-    }
-  ];
+  // Calculate stats for each customer
+  const companiesWithStats = customers.map(customer => {
+    const customerBookings = bookings.filter(b => b.customer_id === customer.id);
+    const totalBookings = customerBookings.length;
+    const lastBookingDate = customerBookings.length > 0 
+      ? Math.max(...customerBookings.map(b => new Date(b.created_at).getTime()))
+      : null;
+    
+    return {
+      id: customer.id,
+      company: customer.company,
+      contactName: customer.contact_name || 'No contact',
+      email: customer.contact_email || 'No email',
+      phone: customer.contact_phone || 'No phone',
+      address: customer.address,
+      city: customer.city,
+      postcode: customer.postcode,
+      totalBookings,
+      status: customer.is_active ? 'active' : 'inactive',
+      lastContact: lastBookingDate 
+        ? new Date(lastBookingDate).toISOString().split('T')[0]
+        : 'Never'
+    };
+  });
 
-  const filteredCompanies = companies.filter(company =>
+  const filteredCompanies = companiesWithStats.filter(company =>
     company.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
     company.contactName.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -123,7 +115,7 @@ const CompanyManagement = ({ onCompanySelect }: CompanyManagementProps) => {
                         <span className="font-medium">Total Bookings:</span> {company.totalBookings}
                       </div>
                       <div className="mb-1">
-                        <span className="font-medium">Total Revenue:</span> £{company.totalRevenue.toLocaleString()}
+                        <span className="font-medium">Address:</span> {company.address || 'No address'}
                       </div>
                       <div>
                         <span className="font-medium">Last Contact:</span> {company.lastContact}
