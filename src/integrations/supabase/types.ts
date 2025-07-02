@@ -2865,6 +2865,27 @@ export type Database = {
         }
         Relationships: []
       }
+      legacy_id_mappings: {
+        Row: {
+          created_at: string | null
+          legacy_id: number
+          legacy_table: string
+          new_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          legacy_id: number
+          legacy_table: string
+          new_id: string
+        }
+        Update: {
+          created_at?: string | null
+          legacy_id?: number
+          legacy_table?: string
+          new_id?: string
+        }
+        Relationships: []
+      }
       legacy_import_log_prod: {
         Row: {
           created_at: string
