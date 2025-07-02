@@ -13,11 +13,29 @@ interface LfsPointer {
 export class GitHubLfsService {
   private static readonly REPO_OWNER = 'lnash2';
   private static readonly REPO_NAME = 'candidate-clock-in';
+  private static githubToken: string | null = null;
+
+  static setGitHubToken(token: string) {
+    this.githubToken = token;
+  }
+
+  private static getHeaders() {
+    const headers: Record<string, string> = {
+      'Accept': 'application/vnd.github.v3+json',
+    };
+    
+    if (this.githubToken) {
+      headers['Authorization'] = `token ${this.githubToken}`;
+    }
+    
+    return headers;
+  }
 
   static async validateBranch(branch: string): Promise<{ valid: boolean; error?: string }> {
     try {
       const response = await fetch(
-        `https://api.github.com/repos/${this.REPO_OWNER}/${this.REPO_NAME}/branches/${branch}`
+        `https://api.github.com/repos/${this.REPO_OWNER}/${this.REPO_NAME}/branches/${branch}`,
+        { headers: this.getHeaders() }
       );
       
       if (response.ok) {
@@ -35,7 +53,8 @@ export class GitHubLfsService {
   static async checkFileExists(filePath: string, branch: string): Promise<{ exists: boolean; error?: string }> {
     try {
       const response = await fetch(
-        `https://api.github.com/repos/${this.REPO_OWNER}/${this.REPO_NAME}/contents/${filePath}?ref=${branch}`
+        `https://api.github.com/repos/${this.REPO_OWNER}/${this.REPO_NAME}/contents/${filePath}?ref=${branch}`,
+        { headers: this.getHeaders() }
       );
       
       if (response.ok) {
@@ -54,7 +73,8 @@ export class GitHubLfsService {
     try {
       // First, get the LFS pointer from the regular file
       const pointerResponse = await fetch(
-        `https://api.github.com/repos/${this.REPO_OWNER}/${this.REPO_NAME}/contents/${filePath}?ref=${branch}`
+        `https://api.github.com/repos/${this.REPO_OWNER}/${this.REPO_NAME}/contents/${filePath}?ref=${branch}`,
+        { headers: this.getHeaders() }
       );
 
       if (!pointerResponse.ok) {
@@ -170,7 +190,8 @@ export class GitHubLfsService {
   static async getBranches(): Promise<{ branches: string[]; error?: string }> {
     try {
       const response = await fetch(
-        `https://api.github.com/repos/${this.REPO_OWNER}/${this.REPO_NAME}/branches`
+        `https://api.github.com/repos/${this.REPO_OWNER}/${this.REPO_NAME}/branches`,
+        { headers: this.getHeaders() }
       );
       
       if (!response.ok) {
@@ -188,7 +209,8 @@ export class GitHubLfsService {
   static async getFolders(branch: string): Promise<{ folders: string[]; error?: string }> {
     try {
       const response = await fetch(
-        `https://api.github.com/repos/${this.REPO_OWNER}/${this.REPO_NAME}/contents?ref=${branch}`
+        `https://api.github.com/repos/${this.REPO_OWNER}/${this.REPO_NAME}/contents?ref=${branch}`,
+        { headers: this.getHeaders() }
       );
       
       if (!response.ok) {
@@ -210,7 +232,8 @@ export class GitHubLfsService {
   static async getSqlFilesInFolder(folderPath: string, branch: string): Promise<{ files: string[]; error?: string }> {
     try {
       const response = await fetch(
-        `https://api.github.com/repos/${this.REPO_OWNER}/${this.REPO_NAME}/contents/${folderPath}?ref=${branch}`
+        `https://api.github.com/repos/${this.REPO_OWNER}/${this.REPO_NAME}/contents/${folderPath}?ref=${branch}`,
+        { headers: this.getHeaders() }
       );
       
       if (!response.ok) {

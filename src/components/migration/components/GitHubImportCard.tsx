@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Github, Download, Database, FileText, CheckCircle, AlertCircle, Loader2, GitBranch, RefreshCw, Folder } from 'lucide-react';
+import { Github, Download, Database, FileText, CheckCircle, AlertCircle, Loader2, GitBranch, RefreshCw, Folder, Key } from 'lucide-react';
 import { GitHubLfsService } from '../services/GitHubLfsService';
 
 interface ImportStatus {
@@ -37,6 +37,8 @@ export const GitHubImportCard = () => {
   const [isLoadingFolders, setIsLoadingFolders] = useState(false);
   const [validationStatus, setValidationStatus] = useState<{ valid: boolean; message?: string } | null>(null);
   const [isValidating, setIsValidating] = useState(false);
+  const [githubToken, setGithubToken] = useState('');
+  const [isTokenValid, setIsTokenValid] = useState<boolean | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -98,6 +100,51 @@ export const GitHubImportCard = () => {
   };
 
   const getCurrentFolder = () => useCustomFolder ? customFolder : selectedFolder;
+
+  const validateGitHubToken = async (token: string) => {
+    if (!token.trim()) {
+      setIsTokenValid(false);
+      return;
+    }
+
+    try {
+      const response = await fetch('https://api.github.com/user', {
+        headers: {
+          'Authorization': `token ${token}`,
+          'Accept': 'application/vnd.github.v3+json',
+        }
+      });
+
+      if (response.ok) {
+        GitHubLfsService.setGitHubToken(token);
+        setIsTokenValid(true);
+        toast({
+          title: 'GitHub Token Valid',
+          description: 'Successfully authenticated with GitHub',
+        });
+        // Refresh branches after successful authentication
+        loadBranches();
+      } else {
+        setIsTokenValid(false);
+        toast({
+          title: 'Invalid GitHub Token',
+          description: 'Please check your token and try again',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      setIsTokenValid(false);
+      toast({
+        title: 'Authentication Failed',
+        description: 'Failed to validate GitHub token',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleTokenSubmit = () => {
+    validateGitHubToken(githubToken);
+  };
 
   const getCurrentBranch = () => useCustomBranch ? customBranch : selectedBranch;
 
@@ -386,6 +433,67 @@ export const GitHubImportCard = () => {
             <AlertDescription>{importStatus.error}</AlertDescription>
           </Alert>
         )}
+
+        {/* GitHub Authentication */}
+        <div className="space-y-4 border rounded-lg p-4 bg-muted/50">
+          <h4 className="font-medium flex items-center gap-2">
+            <Key className="h-4 w-4" />
+            GitHub Authentication
+          </h4>
+          
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>GitHub Personal Access Token</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="password"
+                  value={githubToken}
+                  onChange={(e) => {
+                    setGithubToken(e.target.value);
+                    setIsTokenValid(null);
+                  }}
+                  placeholder="Enter your GitHub token"
+                  className="flex-1"
+                />
+                <Button 
+                  onClick={handleTokenSubmit} 
+                  disabled={!githubToken.trim()}
+                  variant="outline"
+                  size="sm"
+                >
+                  Verify
+                </Button>
+              </div>
+            </div>
+
+            {isTokenValid === true && (
+              <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>
+                  GitHub token verified successfully! You can now access the repository.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {isTokenValid === false && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Invalid or missing GitHub token. Please check your token and try again.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="text-xs text-muted-foreground">
+              <p>To create a GitHub token:</p>
+              <ol className="ml-4 list-decimal space-y-1">
+                <li>Go to GitHub Settings → Developer settings → Personal access tokens</li>
+                <li>Generate a new token with 'repo' scope for private repositories</li>
+                <li>Copy and paste the token above</li>
+              </ol>
+            </div>
+          </div>
+        </div>
 
         {/* Branch Selection */}
         <div className="space-y-4 border rounded-lg p-4 bg-muted/50">
