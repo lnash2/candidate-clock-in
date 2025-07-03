@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useBookings } from '@/hooks/useBookings';
-import CompaniesTable from './companies/CompaniesTable';
+import CompaniesTableNew from './companies/CompaniesTableNew';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 
 interface CompanyManagementProps {
@@ -58,21 +58,15 @@ const CompanyManagement = ({ onCompanySelect }: CompanyManagementProps) => {
       </div>
 
       <Card>
-        <CardContent className="p-0">
-          <DataTablePagination
-            pagination={pagination}
-            onPageChange={goToPage}
-            onSearch={search}
-            searchTerm={searchTerm}
-            searchPlaceholder="Search companies..."
-            loading={customersLoading}
-          />
-          <CompaniesTable
-            companies={companiesWithStats}
+        <CardContent className="p-6">
+          <CompaniesTableNew
+            companies={customers}
             onView={(company) => onCompanySelect?.(company.id)}
             onEdit={(company) => {
-              // TODO: Implement edit functionality
               console.log('Edit company:', company);
+            }}
+            onDelete={(company) => {
+              console.log('Delete company:', company);
             }}
           />
         </CardContent>
