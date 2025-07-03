@@ -26,9 +26,10 @@ const CandidateManagement = () => {
     searchTerm: hookSearchTerm,
     goToPage,
     search: hookSearch,
+    changePageSize,
     createCandidate, 
     updateCandidate, 
-    deleteCandidate 
+    deleteCandidate
   } = useCandidates();
 
   // Map database candidates to component format
@@ -211,6 +212,7 @@ const CandidateManagement = () => {
           <DataTablePagination
             pagination={pagination}
             onPageChange={goToPage}
+            onPageSizeChange={changePageSize}
             onSearch={hookSearch}
             searchTerm={hookSearchTerm}
             searchPlaceholder="Search candidates..."

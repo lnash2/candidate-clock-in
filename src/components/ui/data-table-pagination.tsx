@@ -14,6 +14,7 @@ interface PaginationState {
 interface DataTablePaginationProps {
   pagination: PaginationState;
   onPageChange: (page: number) => void;
+  onPageSizeChange?: (pageSize: number) => void;
   onSearch: (term: string) => void;
   searchTerm: string;
   searchPlaceholder?: string;
@@ -23,12 +24,15 @@ interface DataTablePaginationProps {
 export function DataTablePagination({
   pagination,
   onPageChange,
+  onPageSizeChange,
   onSearch,
   searchTerm,
   searchPlaceholder = "Search...",
   loading = false
 }: DataTablePaginationProps) {
-  const { page, total, totalPages } = pagination;
+  const { page, pageSize, total, totalPages } = pagination;
+  const startRecord = (page - 1) * pageSize + 1;
+  const endRecord = Math.min(page * pageSize, total);
 
   return (
     <div className="flex items-center justify-between px-2 py-4">
@@ -41,11 +45,33 @@ export function DataTablePagination({
           disabled={loading}
         />
         <div className="text-sm text-muted-foreground">
-          {total} total record{total !== 1 ? 's' : ''}
+          Showing {startRecord}-{endRecord} of {total} record{total !== 1 ? 's' : ''}
         </div>
       </div>
 
       <div className="flex items-center space-x-6 lg:space-x-8">
+        {onPageSizeChange && (
+          <div className="flex items-center space-x-2">
+            <p className="text-sm font-medium">Rows per page</p>
+            <Select
+              value={`${pageSize}`}
+              onValueChange={(value) => onPageSizeChange(Number(value))}
+              disabled={loading}
+            >
+              <SelectTrigger className="h-8 w-[70px]">
+                <SelectValue placeholder={pageSize} />
+              </SelectTrigger>
+              <SelectContent side="top">
+                {[50, 100, 200, 500].map((size) => (
+                  <SelectItem key={size} value={`${size}`}>
+                    {size}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        
         <div className="flex items-center space-x-2">
           <p className="text-sm font-medium">Page</p>
           <p className="text-sm text-muted-foreground">

@@ -51,24 +51,25 @@ export const useCandidates = () => {
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState<PaginationState>({
     page: 1,
-    pageSize: 50000, // Set high to accommodate all records
+    pageSize: 200, // Default page size
     total: 0,
     totalPages: 0
   });
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
 
-  const fetchCandidates = async (page?: number, search?: string) => {
+  const fetchCandidates = async (page?: number, search?: string, pageSize?: number) => {
     try {
       setLoading(true);
       const currentPage = page || pagination.page;
       const currentSearch = search !== undefined ? search : searchTerm;
+      const currentPageSize = pageSize || pagination.pageSize;
       
       let query = supabase
         .from('candidates')
         .select('*', { count: 'exact' })
         .order('name', { ascending: true })
-        .limit(50000);
+        .range((currentPage - 1) * currentPageSize, currentPage * currentPageSize - 1);
 
       // Add search functionality
       if (currentSearch) {
@@ -100,8 +101,9 @@ export const useCandidates = () => {
       setPagination(prev => ({
         ...prev,
         page: currentPage,
+        pageSize: currentPageSize,
         total: count || 0,
-        totalPages: Math.ceil((count || 0) / prev.pageSize)
+        totalPages: Math.ceil((count || 0) / currentPageSize)
       }));
       
       console.log(`✅ CANDIDATES: Fetched ${data?.length || 0} candidates out of ${count || 0} total`);
@@ -123,6 +125,11 @@ export const useCandidates = () => {
     setSearchTerm(term);
     setPagination(prev => ({ ...prev, page: 1 }));
     fetchCandidates(1, term);
+  };
+
+  const changePageSize = (newPageSize: number) => {
+    setPagination(prev => ({ ...prev, page: 1, pageSize: newPageSize }));
+    fetchCandidates(1, searchTerm, newPageSize);
   };
 
   const createCandidate = async (candidateData: any) => {
@@ -272,5 +279,6 @@ export const useCandidates = () => {
     deleteCandidate,
     goToPage,
     search,
+    changePageSize,
   };
 };
