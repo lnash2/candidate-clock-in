@@ -139,8 +139,8 @@ const CandidateManagement = () => {
     setIsFormOpen(true);
   };
 
-  // Calculate stats
-  const totalCandidates = mappedCandidates.length;
+  // Calculate stats from total database counts, not just current page
+  const totalCandidates = pagination.total;
   const activeCandidates = mappedCandidates.filter(c => c.active_status === 'Active').length;
   const pendingOnboarding = mappedCandidates.filter(c => c.onboarding_status !== 'Complete').length;
   const portalEnabled = mappedCandidates.filter(c => c.portal_access_enabled).length;
@@ -168,28 +168,27 @@ const CandidateManagement = () => {
           value={totalCandidates}
           description="All candidate records"
           icon={Users}
-          trend={{ value: 5, isPositive: true, label: "this week" }}
         />
         <MetricCard
-          title="Active Candidates"
+          title="Active (Current Page)"
           value={activeCandidates}
-          description="Currently active candidates"
+          description="Active on this page"
           icon={UserCheck}
           variant="success"
         />
         <MetricCard
-          title="Pending Onboarding"
-          value={pendingOnboarding}
-          description="Awaiting completion"
+          title="Page Info"
+          value={`${pagination.page}/${pagination.totalPages}`}
+          description={`Page size: ${pagination.pageSize}`}
           icon={Clock}
-          variant="warning"
+          variant="info"
         />
         <MetricCard
-          title="Portal Access"
-          value={portalEnabled}
-          description="Candidates with portal access"
+          title="Search Results"
+          value={hookSearchTerm ? mappedCandidates.length : pagination.total}
+          description={hookSearchTerm ? "Matching candidates" : "Total candidates"}
           icon={Shield}
-          variant="info"
+          variant="default"
         />
       </div>
 
@@ -200,7 +199,7 @@ const CandidateManagement = () => {
             <div>
               <h3 className="text-lg font-semibold text-foreground">Candidate Directory</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Showing {mappedCandidates.length} candidates from your legacy database
+                {hookSearchTerm ? `Search results for "${hookSearchTerm}"` : `Total: ${pagination.total.toLocaleString()} candidates from your legacy database`}
               </p>
             </div>
             <div className="flex items-center space-x-2">
