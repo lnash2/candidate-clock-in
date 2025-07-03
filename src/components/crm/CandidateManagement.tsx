@@ -9,9 +9,9 @@ import CandidateFormDialog from './candidates/CandidateFormDialog';
 import CandidateDetailDialog from './candidates/CandidateDetailDialog';
 import { Candidate, CandidateFormData } from './candidates/types';
 import { useCandidates } from '@/hooks/useCandidates';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
 
 const CandidateManagement = () => {
-  const [searchTerm, setSearchTerm] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [editingCandidate, setEditingCandidate] = useState<Candidate | null>(null);
@@ -20,6 +20,10 @@ const CandidateManagement = () => {
   const { 
     candidates, 
     loading, 
+    pagination,
+    searchTerm: hookSearchTerm,
+    goToPage,
+    search: hookSearch,
     createCandidate, 
     updateCandidate, 
     deleteCandidate 
@@ -56,11 +60,7 @@ const CandidateManagement = () => {
     last_portal_login: undefined
   }));
 
-  const filteredCandidates = mappedCandidates.filter(candidate =>
-    candidate.candidate_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    candidate.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    candidate.job_title?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Remove client-side filtering since we're using server-side pagination and search
 
   const handleCreateCandidate = async (data: CandidateFormData) => {
     try {
@@ -201,6 +201,14 @@ const CandidateManagement = () => {
       {/* Candidates Table */}
       <Card>
         <CardContent className="p-0">
+          <DataTablePagination
+            pagination={pagination}
+            onPageChange={goToPage}
+            onSearch={hookSearch}
+            searchTerm={hookSearchTerm}
+            searchPlaceholder="Search candidates..."
+            loading={loading}
+          />
           <CandidatesTableAdvanced
             candidates={mappedCandidates}
             onView={handleViewCandidate}

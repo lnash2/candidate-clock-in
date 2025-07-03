@@ -6,13 +6,14 @@ import { Plus } from 'lucide-react';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useBookings } from '@/hooks/useBookings';
 import CompaniesTable from './companies/CompaniesTable';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
 
 interface CompanyManagementProps {
   onCompanySelect?: (companyId: string) => void;
 }
 
 const CompanyManagement = ({ onCompanySelect }: CompanyManagementProps) => {
-  const { customers, loading: customersLoading } = useCustomers();
+  const { customers, loading: customersLoading, pagination, searchTerm, goToPage, search } = useCustomers();
   const { bookings, loading: bookingsLoading } = useBookings();
   
   // Calculate stats for each customer
@@ -58,6 +59,14 @@ const CompanyManagement = ({ onCompanySelect }: CompanyManagementProps) => {
 
       <Card>
         <CardContent className="p-0">
+          <DataTablePagination
+            pagination={pagination}
+            onPageChange={goToPage}
+            onSearch={search}
+            searchTerm={searchTerm}
+            searchPlaceholder="Search companies..."
+            loading={customersLoading}
+          />
           <CompaniesTable
             companies={companiesWithStats}
             onView={(company) => onCompanySelect?.(company.id)}

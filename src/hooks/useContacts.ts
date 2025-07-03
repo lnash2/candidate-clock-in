@@ -21,17 +21,33 @@ export interface Contact {
   is_active?: boolean;
 }
 
+export interface PaginationState {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
 export const useContacts = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<PaginationState>({
+    page: 1,
+    pageSize: 100,
+    total: 0,
+    totalPages: 0
+  });
+  const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
 
-  const fetchContacts = async () => {
+  const fetchContacts = async (page?: number, search?: string) => {
     try {
       setLoading(true);
+      const currentPage = page || pagination.page;
+      const currentSearch = search !== undefined ? search : searchTerm;
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('contacts_prod')
         .select(`
           *,
@@ -45,7 +61,17 @@ export const useContacts = () => {
           )
         `, { count: 'exact' })
         .order('created_at', { ascending: false })
-        .limit(10000); // Increase limit to handle large datasets
+        .range(
+          (currentPage - 1) * pagination.pageSize,
+          currentPage * pagination.pageSize - 1
+        );
+
+      // Add search functionality
+      if (currentSearch) {
+        query = query.or(`contact_name.ilike.%${currentSearch}%,contact_email.ilike.%${currentSearch}%,customers_prod.company.ilike.%${currentSearch}%`);
+      }
+
+      const { data, error, count } = await query;
 
       if (error) throw error;
       
@@ -61,12 +87,32 @@ export const useContacts = () => {
       })) || [];
       
       setContacts(transformedContacts);
+      setPagination(prev => ({
+        ...prev,
+        page: currentPage,
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / prev.pageSize)
+      }));
+      
+      console.log(`Fetched ${transformedContacts.length} contacts out of ${count || 0} total`);
     } catch (err) {
       console.error('Error fetching contacts:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
     }
+  };
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= pagination.totalPages) {
+      fetchContacts(page);
+    }
+  };
+
+  const search = (term: string) => {
+    setSearchTerm(term);
+    setPagination(prev => ({ ...prev, page: 1 }));
+    fetchContacts(1, term);
   };
 
   const createContact = async (contactData: Omit<Contact, 'id' | 'created_at' | 'updated_at' | 'company' | 'address' | 'city' | 'postcode' | 'country' | 'is_active'>) => {
@@ -154,9 +200,13 @@ export const useContacts = () => {
     contacts,
     loading,
     error,
+    pagination,
+    searchTerm,
     fetchContacts,
     createContact,
     updateContact,
     deleteContact,
+    goToPage,
+    search,
   };
 };

@@ -18,29 +18,77 @@ export interface Customer {
   updated_at: string;
 }
 
+export interface PaginationState {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
 export const useCustomers = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<PaginationState>({
+    page: 1,
+    pageSize: 100,
+    total: 0,
+    totalPages: 0
+  });
+  const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
 
-  const fetchCustomers = async () => {
+  const fetchCustomers = async (page?: number, search?: string) => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const currentPage = page || pagination.page;
+      const currentSearch = search !== undefined ? search : searchTerm;
+      
+      let query = supabase
         .from('customers_prod')
         .select('*', { count: 'exact' })
         .order('company', { ascending: true })
-        .limit(10000); // Increase limit to handle large datasets
+        .range(
+          (currentPage - 1) * pagination.pageSize,
+          currentPage * pagination.pageSize - 1
+        );
+
+      // Add search functionality
+      if (currentSearch) {
+        query = query.or(`company.ilike.%${currentSearch}%,contact_name.ilike.%${currentSearch}%,contact_email.ilike.%${currentSearch}%`);
+      }
+
+      const { data, error, count } = await query;
 
       if (error) throw error;
+      
       setCustomers(data || []);
+      setPagination(prev => ({
+        ...prev,
+        page: currentPage,
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / prev.pageSize)
+      }));
+      
+      console.log(`Fetched ${data?.length || 0} customers out of ${count || 0} total`);
     } catch (err) {
       console.error('Error fetching customers:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
     }
+  };
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= pagination.totalPages) {
+      fetchCustomers(page);
+    }
+  };
+
+  const search = (term: string) => {
+    setSearchTerm(term);
+    setPagination(prev => ({ ...prev, page: 1 }));
+    fetchCustomers(1, term);
   };
 
   const createCustomer = async (customerData: Omit<Customer, 'id' | 'created_at' | 'updated_at'>) => {
@@ -133,9 +181,13 @@ export const useCustomers = () => {
     customers,
     loading,
     error,
+    pagination,
+    searchTerm,
     fetchCustomers,
     createCustomer,
     updateCustomer,
     deleteCustomer,
+    goToPage,
+    search,
   };
 };

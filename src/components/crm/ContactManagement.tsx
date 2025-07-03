@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { useContacts } from '@/hooks/useContacts';
 import ContactsTable from './contacts/ContactsTable';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
 
 const ContactManagement = () => {
-  const { contacts, loading } = useContacts();
+  const { contacts, loading, pagination, searchTerm, goToPage, search } = useContacts();
 
   return (
     <div className="space-y-6">
@@ -24,6 +25,14 @@ const ContactManagement = () => {
 
       <Card>
         <CardContent className="p-0">
+          <DataTablePagination
+            pagination={pagination}
+            onPageChange={goToPage}
+            onSearch={search}
+            searchTerm={searchTerm}
+            searchPlaceholder="Search contacts..."
+            loading={loading}
+          />
           {loading ? (
             <div className="p-8 text-center">Loading contacts...</div>
           ) : (

@@ -21,29 +21,77 @@ export interface Candidate {
   updated_at: string;
 }
 
+export interface PaginationState {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
 export const useCandidates = () => {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<PaginationState>({
+    page: 1,
+    pageSize: 100,
+    total: 0,
+    totalPages: 0
+  });
+  const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
 
-  const fetchCandidates = async () => {
+  const fetchCandidates = async (page?: number, search?: string) => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const currentPage = page || pagination.page;
+      const currentSearch = search !== undefined ? search : searchTerm;
+      
+      let query = supabase
         .from('candidates_prod')
         .select('*', { count: 'exact' })
         .order('candidate_name', { ascending: true })
-        .limit(10000); // Increase limit to handle large datasets
+        .range(
+          (currentPage - 1) * pagination.pageSize,
+          currentPage * pagination.pageSize - 1
+        );
+
+      // Add search functionality
+      if (currentSearch) {
+        query = query.or(`candidate_name.ilike.%${currentSearch}%,email.ilike.%${currentSearch}%,phone.ilike.%${currentSearch}%`);
+      }
+
+      const { data, error, count } = await query;
 
       if (error) throw error;
+      
       setCandidates(data || []);
+      setPagination(prev => ({
+        ...prev,
+        page: currentPage,
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / prev.pageSize)
+      }));
+      
+      console.log(`Fetched ${data?.length || 0} candidates out of ${count || 0} total`);
     } catch (err) {
       console.error('Error fetching candidates:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
     }
+  };
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= pagination.totalPages) {
+      fetchCandidates(page);
+    }
+  };
+
+  const search = (term: string) => {
+    setSearchTerm(term);
+    setPagination(prev => ({ ...prev, page: 1 }));
+    fetchCandidates(1, term);
   };
 
   const createCandidate = async (candidateData: Omit<Candidate, 'id' | 'created_at' | 'updated_at'>) => {
@@ -136,9 +184,13 @@ export const useCandidates = () => {
     candidates,
     loading,
     error,
+    pagination,
+    searchTerm,
     fetchCandidates,
     createCandidate,
     updateCandidate,
     deleteCandidate,
+    goToPage,
+    search,
   };
 };
