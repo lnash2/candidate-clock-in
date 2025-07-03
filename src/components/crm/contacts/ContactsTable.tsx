@@ -37,7 +37,7 @@ type SortDirection = 'asc' | 'desc';
 
 const ContactsTable = ({ contacts, onView, onEdit }: ContactsTableProps) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(50000);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortField, setSortField] = useState<SortField>('contact_name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -155,10 +155,10 @@ const ContactsTable = ({ contacts, onView, onEdit }: ContactsTableProps) => {
           <SelectContent>
             <SelectItem value="50">50</SelectItem>
             <SelectItem value="100">100</SelectItem>
-            <SelectItem value="200">200</SelectItem>
-            <SelectItem value="300">300</SelectItem>
-            <SelectItem value="400">400</SelectItem>
             <SelectItem value="500">500</SelectItem>
+            <SelectItem value="1000">1000</SelectItem>
+            <SelectItem value="5000">5000</SelectItem>
+            <SelectItem value="50000">All Records</SelectItem>
           </SelectContent>
         </Select>
       </div>
