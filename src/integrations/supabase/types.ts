@@ -2892,6 +2892,27 @@ export type Database = {
         }
         Relationships: []
       }
+      legacy_mappings_final: {
+        Row: {
+          created_at: string | null
+          legacy_id: number
+          legacy_table: string
+          new_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          legacy_id: number
+          legacy_table: string
+          new_id: string
+        }
+        Update: {
+          created_at?: string | null
+          legacy_id?: number
+          legacy_table?: string
+          new_id?: string
+        }
+        Relationships: []
+      }
       magic_token: {
         Row: {
           created_at: number
