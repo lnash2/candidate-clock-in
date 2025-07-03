@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import { useCustomers } from '@/hooks/useCustomers';
+import { useCompanies } from '@/hooks/useCompanies';
 import { useBookings } from '@/hooks/useBookings';
 import CompaniesTableNew from './companies/CompaniesTableNew';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
@@ -13,34 +13,34 @@ interface CompanyManagementProps {
 }
 
 const CompanyManagement = ({ onCompanySelect }: CompanyManagementProps) => {
-  const { customers, loading: customersLoading, pagination, searchTerm, goToPage, search } = useCustomers();
+  const { companies, loading: companiesLoading, pagination, searchTerm, goToPage, search } = useCompanies();
   const { bookings, loading: bookingsLoading } = useBookings();
   
-  // Calculate stats for each customer
-  const companiesWithStats = customers.map(customer => {
-    const customerBookings = bookings.filter(b => b.customer_id === customer.id);
-    const totalBookings = customerBookings.length;
-    const lastBookingDate = customerBookings.length > 0 
-      ? Math.max(...customerBookings.map(b => new Date(b.created_at).getTime()))
+  // Calculate stats for each company
+  const companiesWithStats = companies.map(company => {
+    const companyBookings = bookings.filter(b => b.company_id === company.id);
+    const totalBookings = companyBookings.length;
+    const lastBookingDate = companyBookings.length > 0 
+      ? Math.max(...companyBookings.map(b => new Date(b.created_at * 1000).getTime()))
       : null;
     
     return {
-      id: customer.id,
-      company: customer.company,
-      contactName: customer.contact_name || 'No contact',
-      email: customer.contact_email || 'No email',
-      phone: customer.contact_phone || 'No phone',
-      address: customer.address,
-      city: customer.city,
-      postcode: customer.postcode,
-      country: customer.country,
+      id: company.id.toString(),
+      company: company.name,
+      contactName: 'No contact', // Would need to join with contacts
+      email: 'No email',
+      phone: company.phone_number || 'No phone',
+      address: company.address?.formatted_address,
+      city: company.address?.city,
+      postcode: company.address?.postal_code,
+      country: company.address?.country,
       totalBookings,
-      status: customer.is_active ? 'active' : 'inactive',
+      status: company.company_status_id ? 'active' : 'inactive',
       lastContact: lastBookingDate 
         ? new Date(lastBookingDate).toISOString().split('T')[0]
         : 'Never',
-      created_at: customer.created_at,
-      updated_at: customer.updated_at
+      created_at: new Date(company.created_at * 1000).toISOString(),
+      updated_at: company.updated_at ? new Date(company.updated_at * 1000).toISOString() : new Date(company.created_at * 1000).toISOString()
     };
   });
 
@@ -60,8 +60,8 @@ const CompanyManagement = ({ onCompanySelect }: CompanyManagementProps) => {
       <Card>
         <CardContent className="p-6">
           <CompaniesTableNew
-            companies={customers}
-            onView={(company) => onCompanySelect?.(company.id)}
+            companies={companies}
+            onView={(company) => onCompanySelect?.(company.id.toString())}
             onEdit={(company) => {
               console.log('Edit company:', company);
             }}

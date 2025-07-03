@@ -4,37 +4,66 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 export interface Booking {
-  id: string;
+  id: number;
+  created_by_user_id: number;
+  candidate_id: number | null;
+  company_id: number;
+  contact_id: number | null;
+  company_rate_id: number;
+  from_date: number;
+  to_date: number;
+  pay_rate: number;
+  pay_rate2: number;
+  charge_rate: number;
+  is_night: boolean;
+  amended_pay_rate: number;
+  holiday_accrued: boolean;
+  cost_rates_submitted: any;
+  company_rate_submitted: any;
+  payroll_type_id: number | null;
+  vacancy_id: number | null;
+  organization_id: number | null;
+  booking_shifted_date: number | null;
+  address_id: number | null;
+  expenses: number | null;
+  booking_group_id: number | null;
+  date: number | null;
+  old_booking_id: number | null;
+  job_category_ids: number[] | null;
+  margin: string | null;
+  amended_margin: string | null;
+  booking_type: string | null;
+  booking_status: string | null;
+  missed_booking_reason: string | null;
+  note: string | null;
+  day_type: string;
+  created_at: number;
+  updated_at: number | null;
+  // Legacy field mappings for compatibility
   customer_id: string | null;
-  candidate_id: string | null;
   vehicle_id: string | null;
   start_date: string;
   end_date: string;
   pickup_location: string | null;
   dropoff_location: string | null;
   driver_class: string | null;
-  booking_type: string | null;
   status: string | null;
   is_night_shift: boolean | null;
   estimated_duration: number | null;
   route_distance: number | null;
   notes: string | null;
-  created_at: string;
-  updated_at: string;
   // Joined data
-  customers?: {
-    id: string;
-    company: string;
-    contact_name: string | null;
+  companies?: {
+    id: number;
+    name: string;
   };
   candidates?: {
-    id: string;
-    candidate_name: string;
+    id: number;
+    name: string;
   };
-  vehicles?: {
-    id: string;
-    truck_registration: string;
-    model: string | null;
+  contacts?: {
+    id: number;
+    name: string;
   };
 }
 
@@ -48,28 +77,46 @@ export const useBookings = () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('bookings_prod')
+        .from('bookings')
         .select(`
           *,
-          customers_prod (
+          companies (
             id,
-            company,
-            contact_name
+            name
           ),
-          candidates_prod (
+          candidates (
             id,
-            candidate_name
+            name
           ),
-          vehicles_prod (
+          contacts (
             id,
-            truck_registration,
-            model
+            name
           )
         `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setBookings(data || []);
+      
+      // Transform legacy data to match expected interface
+      const transformedData = (data || []).map(booking => ({
+        ...booking,
+        customer_id: booking.company_id?.toString() || null,
+        vehicle_id: null, // Not available in legacy schema
+        start_date: new Date(booking.from_date * 1000).toISOString().split('T')[0],
+        end_date: new Date(booking.to_date * 1000).toISOString().split('T')[0],
+        pickup_location: null, // Not available in legacy schema
+        dropoff_location: null, // Not available in legacy schema
+        driver_class: null, // Not available in legacy schema
+        status: booking.booking_status,
+        is_night_shift: booking.is_night,
+        estimated_duration: null, // Not available in legacy schema
+        route_distance: null, // Not available in legacy schema
+        notes: booking.note,
+        created_at: booking.created_at, // Keep as number for internal use
+        updated_at: booking.updated_at || booking.created_at // Keep as number for internal use
+      }));
+      
+      setBookings(transformedData);
     } catch (err) {
       console.error('Error fetching bookings:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -78,26 +125,44 @@ export const useBookings = () => {
     }
   };
 
-  const createBooking = async (bookingData: Omit<Booking, 'id' | 'created_at' | 'updated_at' | 'customers' | 'candidates' | 'vehicles'>) => {
+  const createBooking = async (bookingData: any) => {
     try {
       const { data, error } = await supabase
-        .from('bookings_prod')
-        .insert([bookingData])
+        .from('bookings')
+        .insert([{
+          company_id: parseInt(bookingData.customer_id || '1'),
+          candidate_id: bookingData.candidate_id ? parseInt(bookingData.candidate_id) : null,
+          company_rate_id: 1, // Default value
+          from_date: Math.floor(new Date(bookingData.start_date).getTime() / 1000),
+          to_date: Math.floor(new Date(bookingData.end_date).getTime() / 1000),
+          pay_rate: 0,
+          pay_rate2: 0,
+          charge_rate: 0,
+          is_night: bookingData.is_night_shift || false,
+          amended_pay_rate: 0,
+          holiday_accrued: false,
+          cost_rates_submitted: {},
+          company_rate_submitted: {},
+          booking_type: bookingData.booking_type || 'open',
+          booking_status: bookingData.status || 'open',
+          note: bookingData.notes,
+          day_type: 'weekday',
+          created_by_user_id: 1, // Default value - should be actual user
+          created_at: Math.floor(Date.now() / 1000)
+        }])
         .select(`
           *,
-          customers_prod (
+          companies (
             id,
-            company,
-            contact_name
+            name
           ),
-          candidates_prod (
+          candidates (
             id,
-            candidate_name
+            name
           ),
-          vehicles_prod (
+          contacts (
             id,
-            truck_registration,
-            model
+            name
           )
         `)
         .single();
@@ -121,27 +186,35 @@ export const useBookings = () => {
     }
   };
 
-  const updateBooking = async (id: string, updates: Partial<Booking>) => {
+  const updateBooking = async (id: number, updates: any) => {
     try {
       const { data, error } = await supabase
-        .from('bookings_prod')
-        .update(updates)
+        .from('bookings')
+        .update({
+          company_id: updates.customer_id ? parseInt(updates.customer_id) : undefined,
+          candidate_id: updates.candidate_id,
+          from_date: updates.start_date ? Math.floor(new Date(updates.start_date).getTime() / 1000) : undefined,
+          to_date: updates.end_date ? Math.floor(new Date(updates.end_date).getTime() / 1000) : undefined,
+          is_night: updates.is_night_shift,
+          booking_type: updates.booking_type,
+          booking_status: updates.status,
+          note: updates.notes,
+          updated_at: Math.floor(Date.now() / 1000)
+        })
         .eq('id', id)
         .select(`
           *,
-          customers_prod (
+          companies (
             id,
-            company,
-            contact_name
+            name
           ),
-          candidates_prod (
+          candidates (
             id,
-            candidate_name
+            name
           ),
-          vehicles_prod (
+          contacts (
             id,
-            truck_registration,
-            model
+            name
           )
         `)
         .single();
@@ -167,10 +240,10 @@ export const useBookings = () => {
     }
   };
 
-  const deleteBooking = async (id: string) => {
+  const deleteBooking = async (id: number) => {
     try {
       const { error } = await supabase
-        .from('bookings_prod')
+        .from('bookings')
         .delete()
         .eq('id', id);
 

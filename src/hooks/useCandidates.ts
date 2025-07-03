@@ -4,9 +4,29 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 export interface Candidate {
-  id: string;
-  candidate_name: string;
+  id: number;
+  name: string | null;
   email: string | null;
+  phone_number: string | null;
+  created_by_user_id: number;
+  candidate_status_id: number | null;
+  address_id: number | null;
+  job_category_ids: number[] | null;
+  industry_ids: number[] | null;
+  ni_number: string | null;
+  organization_id: number | null;
+  import_id: number | null;
+  booking_status: string | null;
+  job_title: string | null;
+  current_salary: number | null;
+  expected_salary: number | null;
+  notice_period_id: number | null;
+  preferred_shift_ids: number[] | null;
+  active_status: string | null;
+  created_at: number;
+  updated_at: number | null;
+  // Legacy field mappings for compatibility
+  candidate_name: string;
   phone: string | null;
   address: string | null;
   city: string | null;
@@ -14,11 +34,8 @@ export interface Candidate {
   national_insurance_number: string | null;
   hourly_rate: number | null;
   availability_status: string | null;
-  active_status: string | null;
   licence_categories: string[] | null;
   skills: string[] | null;
-  created_at: string;
-  updated_at: string;
 }
 
 export interface PaginationState {
@@ -48,21 +65,46 @@ export const useCandidates = () => {
       const currentSearch = search !== undefined ? search : searchTerm;
       
       let query = supabase
-        .from('candidates_prod')
-        .select('*', { count: 'exact' })
-        .order('candidate_name', { ascending: true })
+        .from('candidates')
+        .select(`
+          *,
+          addresses (
+            formatted_address,
+            postal_code,
+            city,
+            country
+          )
+        `, { count: 'exact' })
+        .order('name', { ascending: true })
         .limit(50000);
 
       // Add search functionality
       if (currentSearch) {
-        query = query.or(`candidate_name.ilike.%${currentSearch}%,email.ilike.%${currentSearch}%,phone.ilike.%${currentSearch}%`);
+        query = query.or(`name.ilike.%${currentSearch}%,email.ilike.%${currentSearch}%,phone_number.ilike.%${currentSearch}%`);
       }
 
       const { data, error, count } = await query;
 
       if (error) throw error;
       
-      setCandidates(data || []);
+      // Transform legacy data to match expected interface
+      const transformedData = (data || []).map(candidate => ({
+        ...candidate,
+        candidate_name: candidate.name || 'Unknown',
+        phone: candidate.phone_number,
+        address: candidate.addresses?.formatted_address || null,
+        city: candidate.addresses?.city || null,
+        postcode: candidate.addresses?.postal_code || null,
+        national_insurance_number: candidate.ni_number,
+        hourly_rate: candidate.current_salary,
+        availability_status: candidate.active_status,
+        licence_categories: null, // Would need additional mapping
+        skills: null, // Would need additional mapping
+        created_at: candidate.created_at,
+        updated_at: candidate.updated_at || candidate.created_at
+      }));
+      
+      setCandidates(transformedData);
       setPagination(prev => ({
         ...prev,
         page: currentPage,
@@ -91,11 +133,20 @@ export const useCandidates = () => {
     fetchCandidates(1, term);
   };
 
-  const createCandidate = async (candidateData: Omit<Candidate, 'id' | 'created_at' | 'updated_at'>) => {
+  const createCandidate = async (candidateData: any) => {
     try {
       const { data, error } = await supabase
-        .from('candidates_prod')
-        .insert([candidateData])
+        .from('candidates')
+        .insert([{
+          name: candidateData.candidate_name,
+          email: candidateData.email,
+          phone_number: candidateData.phone,
+          ni_number: candidateData.national_insurance_number,
+          current_salary: candidateData.hourly_rate,
+          active_status: candidateData.active_status,
+          created_by_user_id: 1, // Default value - should be actual user
+          created_at: Math.floor(Date.now() / 1000)
+        }])
         .select()
         .single();
 
@@ -118,11 +169,19 @@ export const useCandidates = () => {
     }
   };
 
-  const updateCandidate = async (id: string, updates: Partial<Candidate>) => {
+  const updateCandidate = async (id: number, updates: any) => {
     try {
       const { data, error } = await supabase
-        .from('candidates_prod')
-        .update(updates)
+        .from('candidates')
+        .update({
+          name: updates.candidate_name || undefined,
+          email: updates.email || undefined,
+          phone_number: updates.phone || undefined,
+          ni_number: updates.national_insurance_number || undefined,
+          current_salary: updates.hourly_rate || undefined,
+          active_status: updates.active_status || undefined,
+          updated_at: Math.floor(Date.now() / 1000)
+        })
         .eq('id', id)
         .select()
         .single();
@@ -148,10 +207,10 @@ export const useCandidates = () => {
     }
   };
 
-  const deleteCandidate = async (id: string) => {
+  const deleteCandidate = async (id: number) => {
     try {
       const { error } = await supabase
-        .from('candidates_prod')
+        .from('candidates')
         .delete()
         .eq('id', id);
 

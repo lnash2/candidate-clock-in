@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-export interface Customer {
+export interface Company {
   id: number;
   name: string;
   created_by_user_id: number;
@@ -24,16 +23,16 @@ export interface Customer {
   previous_company_status_id: number | null;
   created_at: number;
   updated_at: number | null;
-  // Legacy field mappings for compatibility
-  company: string; // maps to name
-  contact_name: string | null;
-  contact_email: string | null;
-  contact_phone: string | null;
-  address: string | null;
-  city: string | null;
-  postcode: string | null;
-  country: string | null;
-  is_active: boolean | null;
+  // Joined data
+  address?: {
+    formatted_address: string | null;
+    postal_code: string | null;
+    city: string | null;
+    country: string | null;
+  };
+  totalContacts?: number;
+  totalNotes?: number;
+  lastNote?: string;
 }
 
 export interface PaginationState {
@@ -43,20 +42,20 @@ export interface PaginationState {
   totalPages: number;
 }
 
-export const useCustomers = () => {
-  const [customers, setCustomers] = useState<Customer[]>([]);
+export const useCompanies = () => {
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState<PaginationState>({
     page: 1,
-    pageSize: 50000, // Set high to accommodate all records
+    pageSize: 50000,
     total: 0,
     totalPages: 0
   });
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
 
-  const fetchCustomers = async (page?: number, search?: string) => {
+  const fetchCompanies = async (page?: number, search?: string) => {
     try {
       setLoading(true);
       const currentPage = page || pagination.page;
@@ -85,23 +84,32 @@ export const useCustomers = () => {
 
       if (error) throw error;
       
-      // Transform legacy data to match expected interface
-      const transformedData = (data || []).map(company => ({
-        ...company,
-        company: company.name, // Map name to company for compatibility
-        contact_name: null, // Would need to join with contacts table
-        contact_email: null,
-        contact_phone: company.phone_number,
-        address: company.addresses?.formatted_address || null,
-        city: company.addresses?.city || null,
-        postcode: company.addresses?.postal_code || null,
-        country: company.addresses?.country || null,
-        is_active: company.company_status_id ? true : false, // Simplified mapping
-        created_at: company.created_at,
-        updated_at: company.updated_at || company.created_at
+      // Calculate additional metrics
+      const enrichedCompanies = await Promise.all((data || []).map(async (company) => {
+        // Get contact count
+        const { count: contactCount } = await supabase
+          .from('contacts')
+          .select('*', { count: 'exact', head: true })
+          .eq('company_id', company.id);
+
+        // Get notes count (using the get_total_notes function)
+        const { data: notesData } = await supabase
+          .rpc('get_total_notes', {
+            entitytype: 'company',
+            candidate_id: company.id,
+            organization_ids: company.organization_id ? [company.organization_id] : [],
+            old_organization_ids: []
+          });
+
+        return {
+          ...company,
+          totalContacts: contactCount || 0,
+          totalNotes: notesData || 0,
+          lastNote: '-' // Would need to implement get_last_note call
+        };
       }));
       
-      setCustomers(transformedData);
+      setCompanies(enrichedCompanies);
       setPagination(prev => ({
         ...prev,
         page: currentPage,
@@ -109,9 +117,9 @@ export const useCustomers = () => {
         totalPages: Math.ceil((count || 0) / prev.pageSize)
       }));
       
-      console.log(`✅ CUSTOMERS: Fetched ${data?.length || 0} customers out of ${count || 0} total`);
+      console.log(`✅ COMPANIES: Fetched ${enrichedCompanies.length} companies out of ${count || 0} total`);
     } catch (err) {
-      console.error('Error fetching customers:', err);
+      console.error('Error fetching companies:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
@@ -120,84 +128,72 @@ export const useCustomers = () => {
 
   const goToPage = (page: number) => {
     if (page >= 1 && page <= pagination.totalPages) {
-      fetchCustomers(page);
+      fetchCompanies(page);
     }
   };
 
   const search = (term: string) => {
     setSearchTerm(term);
     setPagination(prev => ({ ...prev, page: 1 }));
-    fetchCustomers(1, term);
+    fetchCompanies(1, term);
   };
 
-  const createCustomer = async (customerData: Omit<Customer, 'id' | 'created_at' | 'updated_at'>) => {
+  const createCompany = async (companyData: Omit<Company, 'id' | 'created_at' | 'updated_at' | 'address' | 'totalContacts' | 'totalNotes' | 'lastNote'>) => {
     try {
       const { data, error } = await supabase
         .from('companies')
-        .insert([{
-          name: customerData.company,
-          phone_number: customerData.contact_phone,
-          website: customerData.address, // Temporary mapping
-          created_by_user_id: 1, // Default value - should be actual user
-          created_at: Math.floor(Date.now() / 1000)
-        }])
+        .insert([companyData])
         .select()
         .single();
 
       if (error) throw error;
       
-      setCustomers(prev => [...prev, data]);
+      await fetchCompanies(); // Refresh the list
       toast({
         title: 'Success',
-        description: 'Customer created successfully',
+        description: 'Company created successfully',
       });
       return data;
     } catch (err) {
-      console.error('Error creating customer:', err);
+      console.error('Error creating company:', err);
       toast({
         title: 'Error',
-        description: 'Failed to create customer',
+        description: 'Failed to create company',
         variant: 'destructive',
       });
       throw err;
     }
   };
 
-  const updateCustomer = async (id: number, updates: any) => {
+  const updateCompany = async (id: number, updates: Partial<Company>) => {
     try {
       const { data, error } = await supabase
         .from('companies')
-        .update({
-          name: updates.company || undefined,
-          phone_number: updates.contact_phone || undefined,
-          updated_at: Math.floor(Date.now() / 1000)
-        })
+        .update({ ...updates, updated_at: Math.floor(Date.now() / 1000) })
         .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
       
-      setCustomers(prev => prev.map(customer => 
-        customer.id === id ? data : customer
-      ));
+      await fetchCompanies(); // Refresh the list
       toast({
         title: 'Success',
-        description: 'Customer updated successfully',
+        description: 'Company updated successfully',
       });
       return data;
     } catch (err) {
-      console.error('Error updating customer:', err);
+      console.error('Error updating company:', err);
       toast({
         title: 'Error',
-        description: 'Failed to update customer',
+        description: 'Failed to update company',
         variant: 'destructive',
       });
       throw err;
     }
   };
 
-  const deleteCustomer = async (id: number) => {
+  const deleteCompany = async (id: number) => {
     try {
       const { error } = await supabase
         .from('companies')
@@ -206,16 +202,16 @@ export const useCustomers = () => {
 
       if (error) throw error;
       
-      setCustomers(prev => prev.filter(customer => customer.id !== id));
+      await fetchCompanies(); // Refresh the list
       toast({
         title: 'Success',
-        description: 'Customer deleted successfully',
+        description: 'Company deleted successfully',
       });
     } catch (err) {
-      console.error('Error deleting customer:', err);
+      console.error('Error deleting company:', err);
       toast({
         title: 'Error',
-        description: 'Failed to delete customer',
+        description: 'Failed to delete company',
         variant: 'destructive',
       });
       throw err;
@@ -223,19 +219,19 @@ export const useCustomers = () => {
   };
 
   useEffect(() => {
-    fetchCustomers();
+    fetchCompanies();
   }, []);
 
   return {
-    customers,
+    companies,
     loading,
     error,
     pagination,
     searchTerm,
-    fetchCustomers,
-    createCustomer,
-    updateCustomer,
-    deleteCustomer,
+    fetchCompanies,
+    createCompany,
+    updateCompany,
+    deleteCompany,
     goToPage,
     search,
   };
