@@ -1,11 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
-import { Search, ArrowUpDown, Eye, Edit, Phone, Mail, ToggleLeft } from 'lucide-react';
+import { ArrowUpDown, Eye, Edit, Phone, Mail, ToggleLeft } from 'lucide-react';
 import { Candidate } from './types';
 
 interface CandidatesTableAdvancedProps {
@@ -19,32 +17,20 @@ type SortField = keyof Candidate;
 type SortDirection = 'asc' | 'desc';
 
 const CandidatesTableAdvanced = ({ candidates, onView, onEdit, onTogglePortalAccess }: CandidatesTableAdvancedProps) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [pageSize, setPageSize] = useState(50000);
-  const [currentPage, setCurrentPage] = useState(1);
   const [sortField, setSortField] = useState<SortField>('candidate_name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [onboardingFilter, setOnboardingFilter] = useState<string>('all');
 
-  // Filter and search
+  // Only client-side filtering (not search or pagination)
   const filteredCandidates = useMemo(() => {
     return candidates.filter(candidate => {
-      const matchesSearch = searchTerm === '' || 
-        candidate.candidate_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (candidate.email && candidate.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (candidate.phone && candidate.phone.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (candidate.address && candidate.address.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (candidate.postcode && candidate.postcode.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (candidate.national_insurance_no && candidate.national_insurance_no.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (candidate.job_title && candidate.job_title.toLowerCase().includes(searchTerm.toLowerCase()));
-      
       const matchesStatus = statusFilter === 'all' || candidate.active_status === statusFilter;
       const matchesOnboarding = onboardingFilter === 'all' || candidate.onboarding_status === onboardingFilter;
       
-      return matchesSearch && matchesStatus && matchesOnboarding;
+      return matchesStatus && matchesOnboarding;
     });
-  }, [candidates, searchTerm, statusFilter, onboardingFilter]);
+  }, [candidates, statusFilter, onboardingFilter]);
 
   // Sort
   const sortedCandidates = useMemo(() => {
@@ -68,13 +54,6 @@ const CandidatesTableAdvanced = ({ candidates, onView, onEdit, onTogglePortalAcc
     });
   }, [filteredCandidates, sortField, sortDirection]);
 
-  // Pagination
-  const totalPages = Math.ceil(sortedCandidates.length / pageSize);
-  const paginatedCandidates = sortedCandidates.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
-
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -82,11 +61,6 @@ const CandidatesTableAdvanced = ({ candidates, onView, onEdit, onTogglePortalAcc
       setSortField(field);
       setSortDirection('asc');
     }
-  };
-
-  const handlePageSizeChange = (newPageSize: string) => {
-    setPageSize(Number(newPageSize));
-    setCurrentPage(1);
   };
 
   const getStatusColor = (status: string) => {
@@ -123,17 +97,8 @@ const CandidatesTableAdvanced = ({ candidates, onView, onEdit, onTogglePortalAcc
 
   return (
     <div className="space-y-4">
-      {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <Input
-            placeholder="Search candidates, emails, phones, addresses, NI numbers..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
+      {/* Status Filters Only */}
+      <div className="flex items-center gap-4">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-40">
             <SelectValue placeholder="Status" />
@@ -156,25 +121,6 @@ const CandidatesTableAdvanced = ({ candidates, onView, onEdit, onTogglePortalAcc
             <SelectItem value="In Progress">In Progress</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
-          <SelectTrigger className="w-20">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="50">50</SelectItem>
-            <SelectItem value="100">100</SelectItem>
-            <SelectItem value="500">500</SelectItem>
-            <SelectItem value="1000">1000</SelectItem>
-            <SelectItem value="5000">5000</SelectItem>
-            <SelectItem value="50000">All Records</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Results Info */}
-      <div className="text-sm text-muted-foreground">
-        Showing {paginatedCandidates.length} of {filteredCandidates.length} candidates
-        {searchTerm && ` matching "${searchTerm}"`}
       </div>
 
       {/* Table */}
@@ -202,7 +148,7 @@ const CandidatesTableAdvanced = ({ candidates, onView, onEdit, onTogglePortalAcc
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedCandidates.map((candidate) => (
+            {sortedCandidates.map((candidate) => (
               <TableRow key={candidate.id}>
                 <TableCell className="font-medium">{candidate.candidate_name}</TableCell>
                 <TableCell>{candidate.email || '-'}</TableCell>
@@ -281,42 +227,6 @@ const CandidatesTableAdvanced = ({ candidates, onView, onEdit, onTogglePortalAcc
           </TableBody>
         </Table>
       </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <Pagination>
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-              />
-            </PaginationItem>
-            
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              const page = i + 1;
-              return (
-                <PaginationItem key={page}>
-                  <PaginationLink
-                    onClick={() => setCurrentPage(page)}
-                    isActive={currentPage === page}
-                    className="cursor-pointer"
-                  >
-                    {page}
-                  </PaginationLink>
-                </PaginationItem>
-              );
-            })}
-            
-            <PaginationItem>
-              <PaginationNext
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      )}
     </div>
   );
 };
