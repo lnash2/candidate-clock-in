@@ -78,27 +78,14 @@ export const useBookings = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('bookings')
-        .select(`
-          *,
-          companies (
-            id,
-            name
-          ),
-          candidates (
-            id,
-            name
-          ),
-          contacts (
-            id,
-            name
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       
       // Transform legacy data to match expected interface
       const transformedData = (data || []).map(booking => ({
+        ...booking,
         id: booking.id.toString(),
         customer_id: booking.company_id?.toString() || null,
         vehicle_id: null,
@@ -112,11 +99,8 @@ export const useBookings = () => {
         estimated_duration: null,
         route_distance: null,
         notes: booking.note,
-        booking_type: booking.booking_type,
-        created_at: new Date(booking.created_at * 1000).toISOString(),
-        updated_at: booking.updated_at ? new Date(booking.updated_at * 1000).toISOString() : new Date(booking.created_at * 1000).toISOString(),
-        companies: booking.companies ? { id: booking.companies.id, name: booking.companies.name } : undefined,
-        candidates: booking.candidates ? { id: booking.candidates.id, candidate_name: booking.candidates.name } : undefined
+        companies: null, // Will be fetched separately if needed
+        candidates: null // Will be fetched separately if needed
       }));
       
       setBookings(transformedData);
@@ -153,26 +137,32 @@ export const useBookings = () => {
           created_by_user_id: 1, // Default value - should be actual user
           created_at: Math.floor(Date.now() / 1000)
         }])
-        .select(`
-          *,
-          companies (
-            id,
-            name
-          ),
-          candidates (
-            id,
-            name
-          ),
-          contacts (
-            id,
-            name
-          )
-        `)
+        .select('*')
         .single();
 
       if (error) throw error;
       
-      setBookings(prev => [data, ...prev]);
+      // Transform the new booking like we do in fetchBookings
+      const transformedBooking = {
+        ...data,
+        id: data.id.toString(),
+        customer_id: data.company_id?.toString() || null,
+        vehicle_id: null,
+        start_date: new Date(data.from_date * 1000).toISOString().split('T')[0],
+        end_date: new Date(data.to_date * 1000).toISOString().split('T')[0],
+        pickup_location: null,
+        dropoff_location: null,
+        driver_class: null,
+        status: data.booking_status,
+        is_night_shift: data.is_night,
+        estimated_duration: null,
+        route_distance: null,
+        notes: data.note,
+        companies: null,
+        candidates: null
+      };
+      
+      setBookings(prev => [transformedBooking, ...prev]);
       toast({
         title: 'Success',
         description: 'Booking created successfully',
@@ -189,7 +179,7 @@ export const useBookings = () => {
     }
   };
 
-  const updateBooking = async (id: number, updates: any) => {
+  const updateBooking = async (id: string, updates: any) => {
     try {
       const { data, error } = await supabase
         .from('bookings')
@@ -204,28 +194,34 @@ export const useBookings = () => {
           note: updates.notes,
           updated_at: Math.floor(Date.now() / 1000)
         })
-        .eq('id', id)
-        .select(`
-          *,
-          companies (
-            id,
-            name
-          ),
-          candidates (
-            id,
-            name
-          ),
-          contacts (
-            id,
-            name
-          )
-        `)
+        .eq('id', parseInt(id))
+        .select('*')
         .single();
 
       if (error) throw error;
       
+      // Transform the updated booking
+      const transformedBooking = {
+        ...data,
+        id: data.id.toString(),
+        customer_id: data.company_id?.toString() || null,
+        vehicle_id: null,
+        start_date: new Date(data.from_date * 1000).toISOString().split('T')[0],
+        end_date: new Date(data.to_date * 1000).toISOString().split('T')[0],
+        pickup_location: null,
+        dropoff_location: null,
+        driver_class: null,
+        status: data.booking_status,
+        is_night_shift: data.is_night,
+        estimated_duration: null,
+        route_distance: null,
+        notes: data.note,
+        companies: null,
+        candidates: null
+      };
+      
       setBookings(prev => prev.map(booking => 
-        booking.id === id ? data : booking
+        booking.id === id ? transformedBooking : booking
       ));
       toast({
         title: 'Success',
@@ -243,12 +239,12 @@ export const useBookings = () => {
     }
   };
 
-  const deleteBooking = async (id: number) => {
+  const deleteBooking = async (id: string) => {
     try {
       const { error } = await supabase
         .from('bookings')
         .delete()
-        .eq('id', id);
+        .eq('id', parseInt(id));
 
       if (error) throw error;
       

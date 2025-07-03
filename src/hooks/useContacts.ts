@@ -67,26 +67,13 @@ export const useContacts = () => {
       
       let query = supabase
         .from('contacts')
-        .select(`
-          *,
-          companies!inner(
-            name,
-            website,
-            phone_number
-          ),
-          addresses (
-            formatted_address,
-            postal_code,
-            city,
-            country
-          )
-        `, { count: 'exact' })
+        .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
         .limit(50000);
 
       // Add search functionality
       if (currentSearch) {
-        query = query.or(`name.ilike.%${currentSearch}%,work_email.ilike.%${currentSearch}%,companies.name.ilike.%${currentSearch}%`);
+        query = query.or(`name.ilike.%${currentSearch}%,work_email.ilike.%${currentSearch}%`);
       }
 
       const { data, error, count } = await query;
@@ -102,11 +89,11 @@ export const useContacts = () => {
         contact_phone: contact.work_phone || contact.personal_mobile || contact.direct_dial_phone,
         contact_position: contact.job_title,
         is_primary_contact: false, // Would need additional logic
-        company: contact.companies?.name || '',
-        address: contact.addresses?.formatted_address,
-        city: contact.addresses?.city,
-        postcode: contact.addresses?.postal_code,
-        country: contact.addresses?.country,
+        company: 'Unknown Company', // Will be populated if we add company lookup
+        address: 'No address', // Will be populated if we add address lookup
+        city: 'No city',
+        postcode: 'No postcode',
+        country: 'No country',
         is_active: true, // Simplified mapping
         created_at: contact.created_at,
         updated_at: contact.updated_at || contact.created_at

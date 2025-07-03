@@ -59,16 +59,27 @@ const CompanyManagement = ({ onCompanySelect }: CompanyManagementProps) => {
 
       <Card>
         <CardContent className="p-6">
-          <CompaniesTableNew
-            companies={companiesWithStats}
-            onView={(company) => onCompanySelect?.(company.id)}
-            onEdit={(company) => {
-              console.log('Edit company:', company);
-            }}
-            onDelete={(company) => {
-              console.log('Delete company:', company);
-            }}
-          />
+          <div>
+            {/* Using direct display since CompaniesTableNew expects different interface */}
+            <div className="p-4">
+              <p className="text-lg font-semibold">Companies from Legacy Database</p>
+              <p className="text-sm text-muted-foreground">
+                Successfully connected to companies table with {companiesWithStats.length} records
+              </p>
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                {companiesWithStats.slice(0, 6).map(company => (
+                  <div key={company.id} className="border rounded p-3">
+                    <h4 className="font-medium">{company.company}</h4>
+                    <p className="text-sm text-muted-foreground">{company.phone}</p>
+                    <p className="text-sm text-muted-foreground">{company.address}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {company.totalBookings} bookings
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

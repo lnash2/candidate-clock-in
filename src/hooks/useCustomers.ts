@@ -64,15 +64,7 @@ export const useCustomers = () => {
       
       let query = supabase
         .from('companies')
-        .select(`
-          *,
-          addresses (
-            formatted_address,
-            postal_code,
-            city,
-            country
-          )
-        `, { count: 'exact' })
+        .select('*', { count: 'exact' })
         .order('name', { ascending: true })
         .limit(50000);
 
@@ -92,10 +84,10 @@ export const useCustomers = () => {
         contact_name: null, // Would need to join with contacts table
         contact_email: null,
         contact_phone: company.phone_number,
-        address: company.addresses?.formatted_address || null,
-        city: company.addresses?.city || null,
-        postcode: company.addresses?.postal_code || null,
-        country: company.addresses?.country || null,
+        address: null, // Will be populated if we add address lookup
+        city: null,
+        postcode: null,
+        country: null,
         is_active: company.company_status_id ? true : false, // Simplified mapping
         created_at: company.created_at,
         updated_at: company.updated_at || company.created_at
@@ -146,7 +138,22 @@ export const useCustomers = () => {
 
       if (error) throw error;
       
-      setCustomers(prev => [...prev, data]);
+      // Transform the new customer
+      const transformedCustomer = {
+        ...data,
+        company: data.name,
+        contact_name: null,
+        contact_email: null,
+        contact_phone: data.phone_number,
+        address: null,
+        city: null,
+        postcode: null,
+        country: null,
+        is_active: data.company_status_id ? true : false,
+        created_at: data.created_at,
+        updated_at: data.updated_at || data.created_at
+      };
+      setCustomers(prev => [...prev, transformedCustomer]);
       toast({
         title: 'Success',
         description: 'Customer created successfully',
@@ -178,8 +185,23 @@ export const useCustomers = () => {
 
       if (error) throw error;
       
+      // Transform the updated customer
+      const transformedCustomer = {
+        ...data,
+        company: data.name,
+        contact_name: null,
+        contact_email: null,
+        contact_phone: data.phone_number,
+        address: null,
+        city: null,
+        postcode: null,
+        country: null,
+        is_active: data.company_status_id ? true : false,
+        created_at: data.created_at,
+        updated_at: data.updated_at || data.created_at
+      };
       setCustomers(prev => prev.map(customer => 
-        customer.id === id ? data : customer
+        customer.id === id ? transformedCustomer : customer
       ));
       toast({
         title: 'Success',

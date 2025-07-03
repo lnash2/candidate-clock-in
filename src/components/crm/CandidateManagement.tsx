@@ -31,7 +31,7 @@ const CandidateManagement = () => {
 
   // Map database candidates to component format
   const mappedCandidates: Candidate[] = candidates.map(c => ({
-    id: c.id,
+    id: c.id.toString(),
     candidate_name: c.candidate_name,
     email: c.email,
     phone: c.phone,
@@ -50,10 +50,10 @@ const CandidateManagement = () => {
     recruiter: 'System',
     resourcer: 'System',
     created_by: 'migration',
-    registered_at: c.created_at,
-    date_added: c.created_at,
-    created_at: c.created_at,
-    updated_at: c.updated_at,
+    registered_at: new Date(c.created_at * 1000).toISOString(),
+    date_added: new Date(c.created_at * 1000).toISOString(),
+    created_at: new Date(c.created_at * 1000).toISOString(),
+    updated_at: c.updated_at ? new Date(c.updated_at * 1000).toISOString() : new Date(c.created_at * 1000).toISOString(),
     payroll_type: 'PAYE',
     portal_access_enabled: false,
     portal_access_token: undefined,
@@ -87,7 +87,7 @@ const CandidateManagement = () => {
     if (!editingCandidate) return;
     
     try {
-      await updateCandidate(editingCandidate.id, {
+      await updateCandidate(parseInt(editingCandidate.id), {
         candidate_name: data.candidate_name,
         email: data.email || null,
         phone: data.phone || null,

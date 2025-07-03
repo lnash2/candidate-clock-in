@@ -144,7 +144,23 @@ export const useCandidates = () => {
 
       if (error) throw error;
       
-      setCandidates(prev => [...prev, data]);
+      // Transform the new candidate like we do in fetchCandidates
+      const transformedCandidate = {
+        ...data,
+        candidate_name: data.name || 'Unknown',
+        phone: data.phone_number,
+        address: null,
+        city: null,
+        postcode: null,
+        national_insurance_number: data.ni_number,
+        hourly_rate: data.current_salary,
+        availability_status: data.active_status,
+        licence_categories: null,
+        skills: null,
+        created_at: data.created_at,
+        updated_at: data.updated_at || data.created_at
+      };
+      setCandidates(prev => [...prev, transformedCandidate]);
       toast({
         title: 'Success',
         description: 'Candidate created successfully',
@@ -180,8 +196,24 @@ export const useCandidates = () => {
 
       if (error) throw error;
       
+      // Transform the updated candidate
+      const transformedCandidate = {
+        ...data,
+        candidate_name: data.name || 'Unknown',
+        phone: data.phone_number,
+        address: null,
+        city: null,
+        postcode: null,
+        national_insurance_number: data.ni_number,
+        hourly_rate: data.current_salary,
+        availability_status: data.active_status,
+        licence_categories: null,
+        skills: null,
+        created_at: data.created_at,
+        updated_at: data.updated_at || data.created_at
+      };
       setCandidates(prev => prev.map(candidate => 
-        candidate.id === id ? data : candidate
+        candidate.id === id ? transformedCandidate : candidate
       ));
       toast({
         title: 'Success',

@@ -24,7 +24,7 @@ const BookingManagement = () => {
   // Transform bookings for display
   const transformedBookings = bookings.map(booking => ({
     id: parseInt(booking.id),
-    customer: booking.customers?.company || 'Unknown Customer',
+    customer: 'Unknown Customer', // Will be populated when we add company lookup
     pickupLocation: booking.pickup_location || '',
     dropoffLocation: booking.dropoff_location || '',
     startDate: booking.start_date,
@@ -32,13 +32,13 @@ const BookingManagement = () => {
     status: booking.status || 'pending',
     estimatedDuration: booking.estimated_duration || 0,
     routeDistance: booking.route_distance || 0,
-    vehicle: booking.vehicles ? `${booking.vehicles.model} - ${booking.vehicles.truck_registration}` : null,
-    driver: booking.candidates?.candidate_name || null,
+    vehicle: null, // No vehicles in legacy schema
+    driver: null, // Will be populated when we add candidate lookup
     notes: booking.notes || '',
     isNightShift: booking.is_night_shift || false,
     driverClass: booking.driver_class || '',
     bookingType: booking.booking_type === 'assigned' ? 'assigned' as const : 'open' as const,
-    candidate_id: booking.candidate_id
+    candidate_id: booking.candidate_id?.toString() || null
   }));
 
   const openBookings = transformedBookings.filter(booking => booking.bookingType === 'open');
