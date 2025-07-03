@@ -66,15 +66,7 @@ export const useCandidates = () => {
       
       let query = supabase
         .from('candidates')
-        .select(`
-          *,
-          addresses (
-            formatted_address,
-            postal_code,
-            city,
-            country
-          )
-        `, { count: 'exact' })
+        .select('*', { count: 'exact' })
         .order('name', { ascending: true })
         .limit(50000);
 
@@ -92,9 +84,9 @@ export const useCandidates = () => {
         ...candidate,
         candidate_name: candidate.name || 'Unknown',
         phone: candidate.phone_number,
-        address: candidate.addresses?.formatted_address || null,
-        city: candidate.addresses?.city || null,
-        postcode: candidate.addresses?.postal_code || null,
+        address: null,
+        city: null,
+        postcode: null,
         national_insurance_number: candidate.ni_number,
         hourly_rate: candidate.current_salary,
         availability_status: candidate.active_status,

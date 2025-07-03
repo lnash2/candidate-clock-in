@@ -60,8 +60,8 @@ const CompanyManagement = ({ onCompanySelect }: CompanyManagementProps) => {
       <Card>
         <CardContent className="p-6">
           <CompaniesTableNew
-            companies={companies}
-            onView={(company) => onCompanySelect?.(company.id.toString())}
+            companies={companiesWithStats}
+            onView={(company) => onCompanySelect?.(company.id)}
             onEdit={(company) => {
               console.log('Edit company:', company);
             }}

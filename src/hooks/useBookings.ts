@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 export interface Booking {
-  id: number;
+  id: string;
   created_by_user_id: number;
   candidate_id: number | null;
   company_id: number;
@@ -99,21 +99,24 @@ export const useBookings = () => {
       
       // Transform legacy data to match expected interface
       const transformedData = (data || []).map(booking => ({
-        ...booking,
+        id: booking.id.toString(),
         customer_id: booking.company_id?.toString() || null,
-        vehicle_id: null, // Not available in legacy schema
+        vehicle_id: null,
         start_date: new Date(booking.from_date * 1000).toISOString().split('T')[0],
         end_date: new Date(booking.to_date * 1000).toISOString().split('T')[0],
-        pickup_location: null, // Not available in legacy schema
-        dropoff_location: null, // Not available in legacy schema
-        driver_class: null, // Not available in legacy schema
+        pickup_location: null,
+        dropoff_location: null,
+        driver_class: null,
         status: booking.booking_status,
         is_night_shift: booking.is_night,
-        estimated_duration: null, // Not available in legacy schema
-        route_distance: null, // Not available in legacy schema
+        estimated_duration: null,
+        route_distance: null,
         notes: booking.note,
-        created_at: booking.created_at, // Keep as number for internal use
-        updated_at: booking.updated_at || booking.created_at // Keep as number for internal use
+        booking_type: booking.booking_type,
+        created_at: new Date(booking.created_at * 1000).toISOString(),
+        updated_at: booking.updated_at ? new Date(booking.updated_at * 1000).toISOString() : new Date(booking.created_at * 1000).toISOString(),
+        companies: booking.companies ? { id: booking.companies.id, name: booking.companies.name } : undefined,
+        candidates: booking.candidates ? { id: booking.candidates.id, candidate_name: booking.candidates.name } : undefined
       }));
       
       setBookings(transformedData);
