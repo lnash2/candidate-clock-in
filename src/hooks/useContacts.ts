@@ -34,7 +34,7 @@ export const useContacts = () => {
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState<PaginationState>({
     page: 1,
-    pageSize: 100,
+    pageSize: 50000, // Set high to accommodate all records
     total: 0,
     totalPages: 0
   });
@@ -60,11 +60,7 @@ export const useContacts = () => {
             is_active
           )
         `, { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range(
-          (currentPage - 1) * pagination.pageSize,
-          currentPage * pagination.pageSize - 1
-        );
+        .order('created_at', { ascending: false });
 
       // Add search functionality
       if (currentSearch) {

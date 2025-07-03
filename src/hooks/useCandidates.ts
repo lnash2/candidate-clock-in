@@ -34,7 +34,7 @@ export const useCandidates = () => {
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState<PaginationState>({
     page: 1,
-    pageSize: 100,
+    pageSize: 50000, // Set high to accommodate all records
     total: 0,
     totalPages: 0
   });
@@ -50,11 +50,7 @@ export const useCandidates = () => {
       let query = supabase
         .from('candidates_prod')
         .select('*', { count: 'exact' })
-        .order('candidate_name', { ascending: true })
-        .range(
-          (currentPage - 1) * pagination.pageSize,
-          currentPage * pagination.pageSize - 1
-        );
+        .order('candidate_name', { ascending: true });
 
       // Add search functionality
       if (currentSearch) {

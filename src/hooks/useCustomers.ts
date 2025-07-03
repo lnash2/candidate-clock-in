@@ -31,7 +31,7 @@ export const useCustomers = () => {
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState<PaginationState>({
     page: 1,
-    pageSize: 100,
+    pageSize: 50000, // Set high to accommodate all records
     total: 0,
     totalPages: 0
   });
@@ -47,11 +47,7 @@ export const useCustomers = () => {
       let query = supabase
         .from('customers_prod')
         .select('*', { count: 'exact' })
-        .order('company', { ascending: true })
-        .range(
-          (currentPage - 1) * pagination.pageSize,
-          currentPage * pagination.pageSize - 1
-        );
+        .order('company', { ascending: true });
 
       // Add search functionality
       if (currentSearch) {
