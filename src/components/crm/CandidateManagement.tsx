@@ -10,6 +10,8 @@ import CandidateDetailDialog from './candidates/CandidateDetailDialog';
 import { Candidate, CandidateFormData } from './candidates/types';
 import { useCandidates } from '@/hooks/useCandidates';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
+import { MetricCard } from '@/components/ui/metric-card';
+import { PageLoading } from '@/components/ui/loading';
 
 const CandidateManagement = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -143,64 +145,69 @@ const CandidateManagement = () => {
   const portalEnabled = mappedCandidates.filter(c => c.portal_access_enabled).length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 p-6">
+      {/* Header */}
+      <div className="flex justify-between items-start">
         <div>
-          <h2 className="text-2xl font-bold">Candidate Management</h2>
-          <p className="text-muted-foreground">Manage candidate records, communications, and portal access</p>
+          <h1 className="text-3xl font-bold text-foreground">Candidate Management</h1>
+          <p className="text-muted-foreground mt-2">
+            Manage candidate records, communications, and portal access
+          </p>
         </div>
-        <Button onClick={() => setIsFormOpen(true)} className="flex items-center space-x-2">
+        <Button onClick={() => setIsFormOpen(true)} className="flex items-center space-x-2 bg-primary hover:bg-primary/90">
           <Plus className="w-4 h-4" />
           <span>Add Candidate</span>
         </Button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Candidates</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalCandidates}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Candidates</CardTitle>
-            <UserCheck className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{activeCandidates}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Onboarding</CardTitle>
-            <Clock className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{pendingOnboarding}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Portal Access</CardTitle>
-            <Shield className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{portalEnabled}</div>
-          </CardContent>
-        </Card>
+      {/* Metrics Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <MetricCard
+          title="Total Candidates"
+          value={totalCandidates}
+          description="All candidate records"
+          icon={Users}
+          trend={{ value: 5, isPositive: true, label: "this week" }}
+        />
+        <MetricCard
+          title="Active Candidates"
+          value={activeCandidates}
+          description="Currently active candidates"
+          icon={UserCheck}
+          variant="success"
+        />
+        <MetricCard
+          title="Pending Onboarding"
+          value={pendingOnboarding}
+          description="Awaiting completion"
+          icon={Clock}
+          variant="warning"
+        />
+        <MetricCard
+          title="Portal Access"
+          value={portalEnabled}
+          description="Candidates with portal access"
+          icon={Shield}
+          variant="info"
+        />
       </div>
 
-      {/* Candidates Table */}
-      <Card>
-        <CardContent className="p-0">
+      {/* Enhanced Candidates Table */}
+      <div className="crm-table">
+        <div className="p-6 border-b border-border">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground">Candidate Directory</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Showing {mappedCandidates.length} candidates from your legacy database
+              </p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button variant="outline" size="sm">Import</Button>
+              <Button variant="outline" size="sm">Export</Button>
+            </div>
+          </div>
+          
           <DataTablePagination
             pagination={pagination}
             onPageChange={goToPage}
@@ -209,14 +216,15 @@ const CandidateManagement = () => {
             searchPlaceholder="Search candidates..."
             loading={loading}
           />
-          <CandidatesTableAdvanced
-            candidates={mappedCandidates}
-            onView={handleViewCandidate}
-            onEdit={handleEditClick}
-            onTogglePortalAccess={handleTogglePortalAccess}
-          />
-        </CardContent>
-      </Card>
+        </div>
+        
+        <CandidatesTableAdvanced
+          candidates={mappedCandidates}
+          onView={handleViewCandidate}
+          onEdit={handleEditClick}
+          onTogglePortalAccess={handleTogglePortalAccess}
+        />
+      </div>
 
       {/* Form Dialog */}
       <CandidateFormDialog

@@ -1,87 +1,187 @@
 
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Building2, Users, Phone, MapPin, Calendar, TrendingUp, Activity } from 'lucide-react';
 import { useCompanies } from '@/hooks/useCompanies';
 import { useBookings } from '@/hooks/useBookings';
-import CompaniesTableNew from './companies/CompaniesTableNew';
-import { DataTablePagination } from '@/components/ui/data-table-pagination';
+import { DataTable } from '@/components/ui/data-table';
+import { MetricCard } from '@/components/ui/metric-card';
+import { PageLoading } from '@/components/ui/loading';
 
 interface CompanyManagementProps {
   onCompanySelect?: (companyId: string) => void;
 }
 
 const CompanyManagement = ({ onCompanySelect }: CompanyManagementProps) => {
-  const { companies, loading: companiesLoading, pagination, searchTerm, goToPage, search } = useCompanies();
+  const { companies, loading: companiesLoading, searchTerm, search } = useCompanies();
   const { bookings, loading: bookingsLoading } = useBookings();
   
-  // Calculate stats for each company
-  const companiesWithStats = companies.map(company => {
-    const companyBookings = bookings.filter(b => b.company_id === company.id);
-    const totalBookings = companyBookings.length;
-    const lastBookingDate = companyBookings.length > 0 
-      ? Math.max(...companyBookings.map(b => new Date(b.created_at * 1000).getTime()))
-      : null;
-    
-    return {
-      id: company.id.toString(),
-      company: company.name,
-      contactName: 'No contact', // Would need to join with contacts
-      email: 'No email',
-      phone: company.phone_number || 'No phone',
-      address: company.address?.formatted_address,
-      city: company.address?.city,
-      postcode: company.address?.postal_code,
-      country: company.address?.country,
-      totalBookings,
-      status: company.company_status_id ? 'active' : 'inactive',
-      lastContact: lastBookingDate 
-        ? new Date(lastBookingDate).toISOString().split('T')[0]
-        : 'Never',
-      created_at: new Date(company.created_at * 1000).toISOString(),
-      updated_at: company.updated_at ? new Date(company.updated_at * 1000).toISOString() : new Date(company.created_at * 1000).toISOString()
-    };
-  });
+  // Calculate comprehensive stats
+  const totalCompanies = companies.length;
+  const activeCompanies = companies.filter(c => c.company_status_id).length;
+  const companiesWithBookings = companies.filter(c => 
+    bookings.some(b => b.company_id === c.id)
+  ).length;
+  
+  const totalBookings = bookings.length;
+  const recentCompanies = companies.filter(c => {
+    const createdDate = new Date(c.created_at * 1000);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    return createdDate > thirtyDaysAgo;
+  }).length;
+
+  // Define table columns
+  const columns = [
+    {
+      key: 'name',
+      label: 'Company Name',
+      sortable: true,
+      render: (value: string, row: any) => (
+        <div className="flex items-center space-x-3">
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <Building2 className="w-4 h-4 text-primary" />
+          </div>
+          <div>
+            <div className="font-medium text-foreground">{value}</div>
+            <div className="text-xs text-muted-foreground">ID: {row.id}</div>
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'phone_number',
+      label: 'Contact',
+      render: (value: string) => value ? (
+        <div className="flex items-center space-x-2">
+          <Phone className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm">{value}</span>
+        </div>
+      ) : (
+        <span className="text-muted-foreground">No phone</span>
+      )
+    },
+    {
+      key: 'website',
+      label: 'Website',
+      render: (value: string) => value ? (
+        <a 
+          href={value.startsWith('http') ? value : `https://${value}`} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-primary hover:underline text-sm"
+        >
+          {value}
+        </a>
+      ) : (
+        <span className="text-muted-foreground">No website</span>
+      )
+    },
+    {
+      key: 'company_status_id',
+      label: 'Status',
+      render: (value: number) => (
+        <Badge variant={value ? 'default' : 'secondary'} className="status-badge">
+          {value ? 'Active' : 'Inactive'}
+        </Badge>
+      )
+    },
+    {
+      key: 'created_at',
+      label: 'Created',
+      render: (value: number) => (
+        <div className="flex items-center space-x-2">
+          <Calendar className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm">{new Date(value * 1000).toLocaleDateString()}</span>
+        </div>
+      )
+    },
+    {
+      key: 'totalContacts',
+      label: 'Contacts',
+      render: (value: number) => (
+        <div className="flex items-center space-x-2">
+          <Users className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-medium">{value || 0}</span>
+        </div>
+      )
+    }
+  ];
+
+  if (companiesLoading || bookingsLoading) {
+    return <PageLoading />;
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 p-6">
+      {/* Header */}
+      <div className="flex justify-between items-start">
         <div>
-          <h2 className="text-2xl font-bold">Company Management</h2>
-          <p className="text-muted-foreground">Manage your client companies and relationships ({companiesWithStats.length} total)</p>
+          <h1 className="text-3xl font-bold text-foreground">Company Management</h1>
+          <p className="text-muted-foreground mt-2">
+            Manage your client companies and business relationships
+          </p>
         </div>
-        <Button className="flex items-center space-x-2">
+        <Button className="flex items-center space-x-2 bg-primary hover:bg-primary/90">
           <Plus className="w-4 h-4" />
           <span>Add Company</span>
         </Button>
       </div>
 
-      <Card>
-        <CardContent className="p-6">
-          <div>
-            {/* Using direct display since CompaniesTableNew expects different interface */}
-            <div className="p-4">
-              <p className="text-lg font-semibold">Companies from Legacy Database</p>
-              <p className="text-sm text-muted-foreground">
-                Successfully connected to companies table with {companiesWithStats.length} records
-              </p>
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                {companiesWithStats.slice(0, 6).map(company => (
-                  <div key={company.id} className="border rounded p-3">
-                    <h4 className="font-medium">{company.company}</h4>
-                    <p className="text-sm text-muted-foreground">{company.phone}</p>
-                    <p className="text-sm text-muted-foreground">{company.address}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {company.totalBookings} bookings
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
+      {/* Metrics Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <MetricCard
+          title="Total Companies"
+          value={totalCompanies}
+          description="All registered companies"
+          icon={Building2}
+          trend={{ value: 12, isPositive: true, label: "this month" }}
+        />
+        <MetricCard
+          title="Active Companies"
+          value={activeCompanies}
+          description="Companies with active status"
+          icon={Activity}
+          variant="success"
+        />
+        <MetricCard
+          title="With Bookings"
+          value={companiesWithBookings}
+          description="Companies that have bookings"
+          icon={TrendingUp}
+          variant="info"
+        />
+        <MetricCard
+          title="New This Month"
+          value={recentCompanies}
+          description="Recently added companies"
+          icon={Calendar}
+          variant="warning"
+        />
+      </div>
+
+      {/* Data Table */}
+      <DataTable
+        title="Company Directory"
+        description={`Showing ${companies.length} companies from your legacy database`}
+        columns={columns}
+        data={companies}
+        searchTerm={searchTerm}
+        onSearchChange={search}
+        loading={companiesLoading}
+        actions={
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" size="sm">
+              Import
+            </Button>
+            <Button variant="outline" size="sm">
+              Export
+            </Button>
           </div>
-        </CardContent>
-      </Card>
+        }
+      />
     </div>
   );
 };
