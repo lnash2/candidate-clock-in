@@ -29,8 +29,9 @@ export const useCustomers = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('customers_prod')
-        .select('*')
-        .order('company', { ascending: true });
+        .select('*', { count: 'exact' })
+        .order('company', { ascending: true })
+        .limit(10000); // Increase limit to handle large datasets
 
       if (error) throw error;
       setCustomers(data || []);

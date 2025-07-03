@@ -43,8 +43,9 @@ export const useContacts = () => {
             country,
             is_active
           )
-        `)
-        .order('created_at', { ascending: false });
+        `, { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .limit(10000); // Increase limit to handle large datasets
 
       if (error) throw error;
       

@@ -32,8 +32,9 @@ export const useCandidates = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('candidates_prod')
-        .select('*')
-        .order('candidate_name', { ascending: true });
+        .select('*', { count: 'exact' })
+        .order('candidate_name', { ascending: true })
+        .limit(10000); // Increase limit to handle large datasets
 
       if (error) throw error;
       setCandidates(data || []);
