@@ -47,7 +47,8 @@ export const useCustomers = () => {
       let query = supabase
         .from('customers_prod')
         .select('*', { count: 'exact' })
-        .order('company', { ascending: true });
+        .order('company', { ascending: true })
+        .limit(50000);
 
       // Add search functionality
       if (currentSearch) {
@@ -66,7 +67,7 @@ export const useCustomers = () => {
         totalPages: Math.ceil((count || 0) / prev.pageSize)
       }));
       
-      console.log(`Fetched ${data?.length || 0} customers out of ${count || 0} total`);
+      console.log(`✅ CUSTOMERS: Fetched ${data?.length || 0} customers out of ${count || 0} total`);
     } catch (err) {
       console.error('Error fetching customers:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');

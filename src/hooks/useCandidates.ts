@@ -50,7 +50,8 @@ export const useCandidates = () => {
       let query = supabase
         .from('candidates_prod')
         .select('*', { count: 'exact' })
-        .order('candidate_name', { ascending: true });
+        .order('candidate_name', { ascending: true })
+        .limit(50000);
 
       // Add search functionality
       if (currentSearch) {
@@ -69,7 +70,7 @@ export const useCandidates = () => {
         totalPages: Math.ceil((count || 0) / prev.pageSize)
       }));
       
-      console.log(`Fetched ${data?.length || 0} candidates out of ${count || 0} total`);
+      console.log(`✅ CANDIDATES: Fetched ${data?.length || 0} candidates out of ${count || 0} total`);
     } catch (err) {
       console.error('Error fetching candidates:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');

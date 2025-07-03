@@ -60,7 +60,8 @@ export const useContacts = () => {
             is_active
           )
         `, { count: 'exact' })
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(50000);
 
       // Add search functionality
       if (currentSearch) {
@@ -90,7 +91,7 @@ export const useContacts = () => {
         totalPages: Math.ceil((count || 0) / prev.pageSize)
       }));
       
-      console.log(`Fetched ${transformedContacts.length} contacts out of ${count || 0} total`);
+      console.log(`✅ CONTACTS: Fetched ${transformedContacts.length} contacts out of ${count || 0} total`);
     } catch (err) {
       console.error('Error fetching contacts:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
