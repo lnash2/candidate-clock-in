@@ -6,8 +6,10 @@ export interface Note {
   id: string;
   content: string;
   note_type: string;
-  entity_type: 'candidate' | 'customer' | 'booking';
-  entity_id: string;
+  candidate_id?: string;
+  customer_id?: string;
+  contact_id?: string;
+  booking_id?: string;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -23,13 +25,33 @@ export const useNotes = (entityType?: string, entityId?: string) => {
     try {
       setLoading(true);
       
-      // For now, we'll simulate notes from legacy data
-      // In future, you might want to migrate legacy notes to a dedicated notes table
-      
-      // Create a mock notes structure for demonstration
-      const mockNotes: Note[] = [];
-      
-      setNotes(mockNotes);
+      let query = supabase
+        .from('notes_prod')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      // Filter by entity type and ID if provided
+      if (entityType && entityId) {
+        switch (entityType) {
+          case 'candidate':
+            query = query.eq('candidate_id', entityId);
+            break;
+          case 'customer':
+            query = query.eq('customer_id', entityId);
+            break;
+          case 'contact':
+            query = query.eq('contact_id', entityId);
+            break;
+          case 'booking':
+            query = query.eq('booking_id', entityId);
+            break;
+        }
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      setNotes(data || []);
     } catch (err) {
       console.error('Error fetching notes:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -40,20 +62,20 @@ export const useNotes = (entityType?: string, entityId?: string) => {
 
   const createNote = async (noteData: Omit<Note, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      // For now, create local notes
-      const newNote: Note = {
-        id: Date.now().toString(),
-        ...noteData,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      
-      setNotes(prev => [newNote, ...prev]);
+      const { data, error } = await supabase
+        .from('notes_prod')
+        .insert(noteData)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      await fetchNotes(); // Refresh the list
       toast({
         title: 'Success',
         description: 'Note created successfully',
       });
-      return newNote;
+      return data;
     } catch (err) {
       console.error('Error creating note:', err);
       toast({
@@ -67,9 +89,14 @@ export const useNotes = (entityType?: string, entityId?: string) => {
 
   const updateNote = async (id: string, updates: Partial<Note>) => {
     try {
-      setNotes(prev => prev.map(note => 
-        note.id === id ? { ...note, ...updates, updated_at: new Date().toISOString() } : note
-      ));
+      const { error } = await supabase
+        .from('notes_prod')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) throw error;
+
+      await fetchNotes(); // Refresh the list
       toast({
         title: 'Success',
         description: 'Note updated successfully',
@@ -87,7 +114,14 @@ export const useNotes = (entityType?: string, entityId?: string) => {
 
   const deleteNote = async (id: string) => {
     try {
-      setNotes(prev => prev.filter(note => note.id !== id));
+      const { error } = await supabase
+        .from('notes_prod')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      await fetchNotes(); // Refresh the list
       toast({
         title: 'Success',
         description: 'Note deleted successfully',

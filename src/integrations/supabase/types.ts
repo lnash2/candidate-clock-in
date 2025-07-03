@@ -2235,6 +2235,50 @@ export type Database = {
         }
         Relationships: []
       }
+      contacts_prod: {
+        Row: {
+          contact_email: string | null
+          contact_name: string
+          contact_phone: string | null
+          contact_position: string | null
+          created_at: string | null
+          customer_id: string | null
+          id: string
+          is_primary_contact: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          contact_email?: string | null
+          contact_name: string
+          contact_phone?: string | null
+          contact_position?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          id?: string
+          is_primary_contact?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          contact_email?: string | null
+          contact_name?: string
+          contact_phone?: string | null
+          contact_position?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          id?: string
+          is_primary_contact?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_prod_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers_prod"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cost_rates: {
         Row: {
           created_at: number
@@ -3077,6 +3121,74 @@ export type Database = {
           vacancy_id?: number | null
         }
         Relationships: []
+      }
+      notes_prod: {
+        Row: {
+          booking_id: string | null
+          candidate_id: string | null
+          contact_id: string | null
+          content: string
+          created_at: string | null
+          created_by: string | null
+          customer_id: string | null
+          id: string
+          note_type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          booking_id?: string | null
+          candidate_id?: string | null
+          contact_id?: string | null
+          content: string
+          created_at?: string | null
+          created_by?: string | null
+          customer_id?: string | null
+          id?: string
+          note_type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          booking_id?: string | null
+          candidate_id?: string | null
+          contact_id?: string | null
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          customer_id?: string | null
+          id?: string
+          note_type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notes_prod_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings_prod"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_prod_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates_prod"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_prod_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts_prod"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_prod_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers_prod"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notice_periods: {
         Row: {

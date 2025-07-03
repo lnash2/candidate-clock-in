@@ -3,27 +3,11 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import { useCustomers } from '@/hooks/useCustomers';
+import { useContacts } from '@/hooks/useContacts';
 import ContactsTable from './contacts/ContactsTable';
 
 const ContactManagement = () => {
-  const { customers } = useCustomers();
-
-  // Transform customers into contacts format for the table
-  const contacts = customers.map(customer => ({
-    id: customer.id,
-    contact_name: customer.contact_name,
-    contact_email: customer.contact_email,
-    contact_phone: customer.contact_phone,
-    company: customer.company,
-    address: customer.address,
-    city: customer.city,
-    postcode: customer.postcode,
-    country: customer.country,
-    is_active: customer.is_active,
-    created_at: customer.created_at,
-    updated_at: customer.updated_at
-  }));
+  const { contacts, loading } = useContacts();
 
   return (
     <div className="space-y-6">
@@ -40,17 +24,21 @@ const ContactManagement = () => {
 
       <Card>
         <CardContent className="p-0">
-          <ContactsTable
-            contacts={contacts}
-            onView={(contact) => {
-              // TODO: Implement view functionality
-              console.log('View contact:', contact);
-            }}
-            onEdit={(contact) => {
-              // TODO: Implement edit functionality
-              console.log('Edit contact:', contact);
-            }}
-          />
+          {loading ? (
+            <div className="p-8 text-center">Loading contacts...</div>
+          ) : (
+            <ContactsTable
+              contacts={contacts}
+              onView={(contact) => {
+                // TODO: Implement view functionality
+                console.log('View contact:', contact);
+              }}
+              onEdit={(contact) => {
+                // TODO: Implement edit functionality
+                console.log('Edit contact:', contact);
+              }}
+            />
+          )}
         </CardContent>
       </Card>
     </div>

@@ -9,17 +9,21 @@ import { Search, ArrowUpDown, Eye, Edit, Phone, Mail, Building2 } from 'lucide-r
 
 interface Contact {
   id: string;
+  customer_id: string;
   contact_name: string | null;
   contact_email: string | null;
   contact_phone: string | null;
-  company: string;
-  address: string | null;
-  city: string | null;
-  postcode: string | null;
-  country: string | null;
-  is_active: boolean | null;
+  contact_position: string | null;
+  is_primary_contact: boolean | null;
   created_at: string;
   updated_at: string;
+  // Joined company data
+  company?: string;
+  address?: string | null;
+  city?: string | null;
+  postcode?: string | null;
+  country?: string | null;
+  is_active?: boolean | null;
 }
 
 interface ContactsTableProps {
@@ -46,7 +50,7 @@ const ContactsTable = ({ contacts, onView, onEdit }: ContactsTableProps) => {
         (contact.contact_name && contact.contact_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (contact.contact_email && contact.contact_email.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (contact.contact_phone && contact.contact_phone.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        contact.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (contact.company && contact.company.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (contact.address && contact.address.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (contact.city && contact.city.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (contact.postcode && contact.postcode.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -189,7 +193,7 @@ const ContactsTable = ({ contacts, onView, onEdit }: ContactsTableProps) => {
                 <TableCell className="font-medium">{contact.contact_name || '-'}</TableCell>
                 <TableCell>{contact.contact_email || '-'}</TableCell>
                 <TableCell>{contact.contact_phone || '-'}</TableCell>
-                <TableCell>{contact.company}</TableCell>
+                <TableCell>{contact.company || '-'}</TableCell>
                 <TableCell>{contact.address || '-'}</TableCell>
                 <TableCell>{contact.city || '-'}</TableCell>
                 <TableCell>{contact.postcode || '-'}</TableCell>
