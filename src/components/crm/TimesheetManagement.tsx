@@ -80,12 +80,16 @@ const TimesheetManagement = () => {
       });
 
       console.log('Filtered active bookings:', activeBookings.length);
+      console.log('Available candidates:', candidates.length);
+      console.log('Sample candidates:', candidates.slice(0, 3).map(c => ({ id: c.id, name: c.name })));
 
       // Create timesheet entries for each candidate for each day of the week
       const entries: TimesheetEntry[] = [];
       
       activeBookings.forEach(booking => {
+        console.log('Processing booking:', booking.id, 'candidate_id:', booking.candidate_id, 'candidate_name from booking:', booking.candidates?.name);
         const candidate = candidates.find(c => c.id === booking.candidate_id);
+        console.log('Found candidate:', candidate ? { id: candidate.id, name: candidate.name } : 'NOT FOUND');
         if (candidate) {
           weekDates.forEach(date => {
             const dateStr = date.toISOString().split('T')[0];
