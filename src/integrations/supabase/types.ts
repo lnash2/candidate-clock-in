@@ -408,7 +408,92 @@ export type Database = {
           updated_at?: number | null
           vacancy_id?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_bookings_address"
+            columns: ["address_id"]
+            isOneToOne: false
+            referencedRelation: "addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_duplicated_with_phone_email_and_notes"
+            referencedColumns: ["candidate_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_phone_whatsapp_preview"
+            referencedColumns: ["candidate_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates_no_job_category"
+            referencedColumns: ["candidate_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates_short_phone_nonrecruiting"
+            referencedColumns: ["candidate_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates_to_remove"
+            referencedColumns: ["candidate_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates_too_short_phone"
+            referencedColumns: ["candidate_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates_with_0000"
+            referencedColumns: ["candidate_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "missing_contacts_with_notes"
+            referencedColumns: ["candidate_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_company"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_contact"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       bookings_prod: {
         Row: {
@@ -1078,7 +1163,15 @@ export type Database = {
           zoho_request_status?: string | null
           zoho_setting_id?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_candidates_address"
+            columns: ["address_id"]
+            isOneToOne: false
+            referencedRelation: "addresses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       candidates_backup: {
         Row: {
@@ -1903,7 +1996,15 @@ export type Database = {
           vat_number?: string | null
           website?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_companies_address"
+            columns: ["address_id"]
+            isOneToOne: false
+            referencedRelation: "addresses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       company_addresses: {
         Row: {
@@ -2238,7 +2339,22 @@ export type Database = {
           work_email?: string | null
           work_phone?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_contacts_address"
+            columns: ["address_id"]
+            isOneToOne: false
+            referencedRelation: "addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_contacts_company"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contacts_prod: {
         Row: {
@@ -4242,7 +4358,71 @@ export type Database = {
           bookings: Json | null
           candidate_id: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_duplicated_with_phone_email_and_notes"
+            referencedColumns: ["candidate_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_phone_whatsapp_preview"
+            referencedColumns: ["candidate_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates_no_job_category"
+            referencedColumns: ["candidate_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates_short_phone_nonrecruiting"
+            referencedColumns: ["candidate_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates_to_remove"
+            referencedColumns: ["candidate_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates_too_short_phone"
+            referencedColumns: ["candidate_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates_with_0000"
+            referencedColumns: ["candidate_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "missing_contacts_with_notes"
+            referencedColumns: ["candidate_id"]
+          },
+        ]
       }
       candidate_duplicated_with_phone_email_and_notes: {
         Row: {
