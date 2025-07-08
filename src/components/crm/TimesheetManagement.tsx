@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Play, Square, Clock, Calendar } from 'lucide-react';
 import { useBookings } from '@/hooks/useBookings';
 import { useToast } from '@/hooks/use-toast';
@@ -26,6 +29,14 @@ const TimesheetManagement = () => {
   const [selectedWeek, setSelectedWeek] = useState(new Date());
   const [candidates, setCandidates] = useState<any[]>([]);
   const [candidatesLoading, setCandidatesLoading] = useState(false);
+  const [timeEntryDialog, setTimeEntryDialog] = useState<{
+    isOpen: boolean;
+    type: 'start' | 'stop';
+    candidateId: number;
+    candidateName: string;
+    date: string;
+    currentTime: string;
+  } | null>(null);
 
   // Generate dates for the current week
   const getWeekDates = (date: Date) => {
@@ -162,44 +173,82 @@ const TimesheetManagement = () => {
   }, [bookings, candidates, bookingsLoading, candidatesLoading, selectedWeek]);
 
   const handleStartTimer = (candidateId: number, date: string) => {
-    setTimesheetEntries(prev => prev.map(entry => 
-      entry.candidateId === candidateId && entry.date === date
-        ? {
-            ...entry,
-            startTime: new Date(),
-            isActive: true,
-            status: 'in_progress'
-          }
-        : entry
-    ));
-
-    toast({
-      title: "Timer Started",
-      description: "Time tracking has begun for this candidate.",
+    const candidate = candidates.find(c => c.id === candidateId);
+    const now = new Date();
+    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    
+    setTimeEntryDialog({
+      isOpen: true,
+      type: 'start',
+      candidateId,
+      candidateName: candidate?.name || 'Unknown',
+      date,
+      currentTime
     });
   };
 
   const handleStopTimer = (candidateId: number, date: string) => {
-    setTimesheetEntries(prev => prev.map(entry => {
-      if (entry.candidateId === candidateId && entry.date === date && entry.startTime) {
-        const endTime = new Date();
-        const totalHours = (endTime.getTime() - entry.startTime.getTime()) / (1000 * 60 * 60);
-        
-        return {
-          ...entry,
-          endTime,
-          totalHours: Math.round(totalHours * 100) / 100,
-          isActive: false,
-          status: 'completed'
-        };
-      }
-      return entry;
-    }));
-
-    toast({
-      title: "Timer Stopped",
-      description: "Time has been recorded successfully.",
+    const candidate = candidates.find(c => c.id === candidateId);
+    const now = new Date();
+    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    
+    setTimeEntryDialog({
+      isOpen: true,
+      type: 'stop',
+      candidateId,
+      candidateName: candidate?.name || 'Unknown',
+      date,
+      currentTime
     });
+  };
+
+  const handleTimeSubmit = () => {
+    if (!timeEntryDialog) return;
+
+    const { type, candidateId, date, currentTime } = timeEntryDialog;
+    const [hours, minutes] = currentTime.split(':').map(Number);
+    const timeDate = new Date();
+    timeDate.setHours(hours, minutes, 0, 0);
+
+    if (type === 'start') {
+      setTimesheetEntries(prev => prev.map(entry => 
+        entry.candidateId === candidateId && entry.date === date
+          ? {
+              ...entry,
+              startTime: timeDate,
+              isActive: true,
+              status: 'in_progress'
+            }
+          : entry
+      ));
+
+      toast({
+        title: "Start Time Recorded",
+        description: `Started at ${currentTime}`,
+      });
+    } else {
+      setTimesheetEntries(prev => prev.map(entry => {
+        if (entry.candidateId === candidateId && entry.date === date && entry.startTime) {
+          const totalHours = (timeDate.getTime() - entry.startTime.getTime()) / (1000 * 60 * 60);
+          
+          return {
+            ...entry,
+            endTime: timeDate,
+            totalHours: Math.round(totalHours * 100) / 100,
+            isActive: false,
+            status: 'completed'
+          };
+        }
+        return entry;
+      }));
+
+      toast({
+        title: "End Time Recorded",
+        description: `Ended at ${currentTime}`,
+      });
+    }
+
+    setTimeEntryDialog(null);
   };
 
   const getEntry = (candidateId: number, date: string) => {
@@ -409,6 +458,49 @@ const TimesheetManagement = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Time Entry Dialog */}
+      <Dialog open={timeEntryDialog?.isOpen || false} onOpenChange={(open) => !open && setTimeEntryDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {timeEntryDialog?.type === 'start' ? 'Enter Start Time' : 'Enter End Time'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium">Candidate</Label>
+              <p className="text-sm text-gray-600">{timeEntryDialog?.candidateName}</p>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Date</Label>
+              <p className="text-sm text-gray-600">
+                {timeEntryDialog?.date && new Date(timeEntryDialog.date).toLocaleDateString()}
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="time-input">
+                {timeEntryDialog?.type === 'start' ? 'Start Time' : 'End Time'}
+              </Label>
+              <Input
+                id="time-input"
+                type="time"
+                value={timeEntryDialog?.currentTime || ''}
+                onChange={(e) => setTimeEntryDialog(prev => prev ? {...prev, currentTime: e.target.value} : null)}
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTimeEntryDialog(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleTimeSubmit}>
+              {timeEntryDialog?.type === 'start' ? 'Start Timer' : 'Record End Time'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
