@@ -1,7 +1,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Building2, Users, Calendar, DollarSign, MessageSquare, TrendingUp } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, BarChart, Bar, ResponsiveContainer } from 'recharts';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useCandidates } from '@/hooks/useCandidates';
 import { useBookings } from '@/hooks/useBookings';
@@ -20,12 +22,14 @@ const CRMOverview = () => {
     recentBookings: 0,
     avgHourlyRate: 0
   });
+  const [monthlyBookingsData, setMonthlyBookingsData] = useState<any[]>([]);
+  const [bookingsByStatus, setBookingsByStatus] = useState<any[]>([]);
 
   useEffect(() => {
     if (!customersLoading && !candidatesLoading && !bookingsLoading && !ratesLoading) {
       const activeBookings = bookings.filter(b => b.status === 'open' || b.status === 'confirmed').length;
       const recentBookings = bookings.filter(b => {
-        const bookingDate = new Date(b.created_at);
+        const bookingDate = new Date(b.created_at * 1000);
         const weekAgo = new Date();
         weekAgo.setDate(weekAgo.getDate() - 7);
         return bookingDate >= weekAgo;
@@ -46,6 +50,51 @@ const CRMOverview = () => {
         recentBookings,
         avgHourlyRate: Math.round(avgHourlyRate * 100) / 100
       });
+
+      // Process bookings data for charts
+      const now = new Date();
+      const monthAgo = new Date();
+      monthAgo.setDate(monthAgo.getDate() - 30);
+
+      // Filter bookings from the past month
+      const monthlyBookings = bookings.filter(b => {
+        const bookingDate = new Date(b.created_at * 1000);
+        return bookingDate >= monthAgo && bookingDate <= now;
+      });
+
+      // Group bookings by day for line chart
+      const bookingsByDay = monthlyBookings.reduce((acc: { [key: string]: number }, booking) => {
+        const date = new Date(booking.created_at * 1000).toISOString().split('T')[0];
+        acc[date] = (acc[date] || 0) + 1;
+        return acc;
+      }, {});
+
+      // Create array for chart with all days in the past month
+      const chartData = [];
+      for (let d = new Date(monthAgo); d <= now; d.setDate(d.getDate() + 1)) {
+        const dateStr = d.toISOString().split('T')[0];
+        chartData.push({
+          date: dateStr,
+          bookings: bookingsByDay[dateStr] || 0,
+          day: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        });
+      }
+
+      setMonthlyBookingsData(chartData);
+
+      // Group bookings by status for bar chart
+      const statusCounts = monthlyBookings.reduce((acc: { [key: string]: number }, booking) => {
+        const status = booking.status || 'unknown';
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+      }, {});
+
+      const statusData = Object.entries(statusCounts).map(([status, count]) => ({
+        status: status.charAt(0).toUpperCase() + status.slice(1),
+        count
+      }));
+
+      setBookingsByStatus(statusData);
     }
   }, [customers, candidates, bookings, rates, customersLoading, candidatesLoading, bookingsLoading, ratesLoading]);
 
@@ -117,6 +166,78 @@ const CRMOverview = () => {
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">{stats.totalRates}</div>
             <p className="text-xs text-muted-foreground">Rate configurations</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Bookings Over Past Month</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer
+              config={{
+                bookings: {
+                  label: "Bookings",
+                  color: "hsl(var(--primary))",
+                },
+              }}
+              className="h-[300px]"
+            >
+              <LineChart data={monthlyBookingsData}>
+                <XAxis 
+                  dataKey="day" 
+                  tick={{ fontSize: 12 }}
+                  interval="preserveStartEnd"
+                />
+                <YAxis tick={{ fontSize: 12 }} />
+                <ChartTooltip 
+                  content={<ChartTooltipContent />}
+                  labelFormatter={(value) => `Date: ${value}`}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="bookings" 
+                  stroke="hsl(var(--primary))" 
+                  strokeWidth={2}
+                  dot={{ fill: "hsl(var(--primary))", strokeWidth: 2, r: 4 }}
+                />
+              </LineChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Bookings by Status (Past Month)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer
+              config={{
+                count: {
+                  label: "Count",
+                  color: "hsl(var(--chart-1))",
+                },
+              }}
+              className="h-[300px]"
+            >
+              <BarChart data={bookingsByStatus}>
+                <XAxis 
+                  dataKey="status" 
+                  tick={{ fontSize: 12 }}
+                />
+                <YAxis tick={{ fontSize: 12 }} />
+                <ChartTooltip 
+                  content={<ChartTooltipContent />}
+                />
+                <Bar 
+                  dataKey="count" 
+                  fill="hsl(var(--chart-1))"
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ChartContainer>
           </CardContent>
         </Card>
       </div>
