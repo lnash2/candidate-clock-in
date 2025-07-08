@@ -77,13 +77,13 @@ export const useBookings = () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('bookings')
+        .from('bookings_with_details')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       
-      // Transform legacy data to match expected interface
+      // Transform data using the new view with proper relationships
       const transformedData = (data || []).map(booking => ({
         ...booking,
         id: booking.id.toString(),
@@ -91,16 +91,22 @@ export const useBookings = () => {
         vehicle_id: null,
         start_date: new Date(booking.from_date * 1000).toISOString().split('T')[0],
         end_date: new Date(booking.to_date * 1000).toISOString().split('T')[0],
-        pickup_location: null,
-        dropoff_location: null,
+        pickup_location: booking.booking_address,
+        dropoff_location: booking.booking_address,
         driver_class: null,
         status: booking.booking_status,
         is_night_shift: booking.is_night,
         estimated_duration: null,
         route_distance: null,
         notes: booking.note,
-        companies: null, // Will be fetched separately if needed
-        candidates: null // Will be fetched separately if needed
+        companies: booking.company_name ? {
+          id: booking.company_id,
+          name: booking.company_name
+        } : null,
+        candidates: booking.candidate_name ? {
+          id: booking.candidate_id,
+          name: booking.candidate_name
+        } : null
       }));
       
       setBookings(transformedData);

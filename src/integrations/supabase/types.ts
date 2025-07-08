@@ -476,6 +476,13 @@ export type Database = {
             foreignKeyName: "fk_bookings_candidate"
             columns: ["candidate_id"]
             isOneToOne: false
+            referencedRelation: "candidates_with_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
             referencedRelation: "missing_contacts_with_notes"
             referencedColumns: ["candidate_id"]
           },
@@ -484,6 +491,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_company"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies_with_details"
             referencedColumns: ["id"]
           },
           {
@@ -2352,6 +2366,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_contacts_company"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies_with_details"
             referencedColumns: ["id"]
           },
         ]
@@ -4419,8 +4440,182 @@ export type Database = {
             foreignKeyName: "fk_bookings_candidate"
             columns: ["candidate_id"]
             isOneToOne: false
+            referencedRelation: "candidates_with_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
             referencedRelation: "missing_contacts_with_notes"
             referencedColumns: ["candidate_id"]
+          },
+        ]
+      }
+      bookings_with_details: {
+        Row: {
+          address_id: number | null
+          agency_margin_amended_pay_rate: string | null
+          agency_margin_standard: string | null
+          amended_margin: string | null
+          amended_margin_total: string | null
+          amended_pay_rate: number | null
+          booking_address: string | null
+          booking_backfilled_at: number | null
+          booking_cancelled_at: number | null
+          booking_city: string | null
+          booking_foc_at: number | null
+          booking_group_id: number | null
+          booking_missed_at: number | null
+          booking_postcode: string | null
+          booking_shifted_date: number | null
+          booking_status: string | null
+          booking_type: string | null
+          candidate_email: string | null
+          candidate_id: number | null
+          candidate_name: string | null
+          candidate_phone: string | null
+          charge_rate: number | null
+          company_id: number | null
+          company_name: string | null
+          company_phone: string | null
+          company_rate_id: number | null
+          company_rate_submitted: Json | null
+          company_website: string | null
+          contact_email: string | null
+          contact_id: number | null
+          contact_name: string | null
+          contact_phone: string | null
+          cost_rates_submitted: Json | null
+          created_at: number | null
+          created_by_user_id: number | null
+          date: number | null
+          day_type: string | null
+          employers_ni: string | null
+          expenses: number | null
+          from_date: number | null
+          holiday_accrued: boolean | null
+          hourly_holiday_pay: string | null
+          hourly_rate_with_holiday_included: string | null
+          hourly_rate_without_holiday_pay: string | null
+          id: number | null
+          is_night: boolean | null
+          job_category_ids: number[] | null
+          margin: string | null
+          margin_total: string | null
+          margin_with_costs_amended_pay_rate: string | null
+          margin_with_costs_standard: string | null
+          missed_booking_reason: string | null
+          note: string | null
+          old_booking_id: number | null
+          organization_id: number | null
+          pay_rate: number | null
+          pay_rate2: number | null
+          payroll_type_id: number | null
+          pension_contribution: string | null
+          to_date: number | null
+          total_employment_costs: string | null
+          updated_at: number | null
+          vacancy_id: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_bookings_address"
+            columns: ["address_id"]
+            isOneToOne: false
+            referencedRelation: "addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_duplicated_with_phone_email_and_notes"
+            referencedColumns: ["candidate_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_phone_whatsapp_preview"
+            referencedColumns: ["candidate_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates_no_job_category"
+            referencedColumns: ["candidate_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates_short_phone_nonrecruiting"
+            referencedColumns: ["candidate_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates_to_remove"
+            referencedColumns: ["candidate_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates_too_short_phone"
+            referencedColumns: ["candidate_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates_with_0000"
+            referencedColumns: ["candidate_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates_with_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_candidate"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "missing_contacts_with_notes"
+            referencedColumns: ["candidate_id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_company"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_company"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies_with_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bookings_contact"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -4533,6 +4728,169 @@ export type Database = {
         }
         Relationships: []
       }
+      candidates_with_details: {
+        Row: {
+          active_status: string | null
+          active_status_changed_at: number | null
+          added_to_loader: boolean | null
+          added_to_loader_at: number | null
+          address_id: number | null
+          attachments: Json | null
+          booking_status: string | null
+          candidate_address: string | null
+          candidate_city: string | null
+          candidate_postcode: string | null
+          candidate_settings: Json | null
+          candidate_status_id: number | null
+          company_name: string | null
+          company_number: string | null
+          cpc_back_attachment: Json | null
+          cpc_expire_date: number | null
+          cpc_front_attachment: Json | null
+          created_at: number | null
+          created_by_user_id: number | null
+          current_salary: number | null
+          date_of_rehabilitation: number | null
+          department_tag_ids: number[] | null
+          details_of_convictions: string | null
+          digi_card_back_attachment: Json | null
+          digi_card_expire_date: number | null
+          digi_card_front_attachment: Json | null
+          dob: number | null
+          document_required_steps: string[] | null
+          document_steps: string[] | null
+          document_steps_changed_at: number | null
+          driver_card_back_attachment: Json | null
+          driver_card_front_attachment: Json | null
+          driver_license: string | null
+          driver_license_back_attachment: Json | null
+          driver_license_check: boolean | null
+          driver_license_expire_date: number | null
+          driver_license_front_attachment: Json | null
+          email: string | null
+          expected_salary: number | null
+          external_zoho_template_id: string | null
+          forename: string | null
+          ghl_contact_id: string | null
+          ghl_location_id: string | null
+          has_own_transport: boolean | null
+          health_issue_state: string | null
+          hear_about_us: string | null
+          hiab_card_back_attachment: Json | null
+          hiab_card_expire_date: number | null
+          hiab_card_front_attachment: Json | null
+          id: number | null
+          import_id: number | null
+          industry_ids: number[] | null
+          industry_type_id: number | null
+          is_completed_onboarding_steps: boolean | null
+          job_category_ids: number[] | null
+          job_title: string | null
+          job_title_id: number | null
+          manual_handling: string | null
+          marketing_preferences: string[] | null
+          name: string | null
+          next_of_kin_name: string | null
+          next_of_kin_phone_number: string | null
+          next_of_kin_relationship: string | null
+          ni_number: string | null
+          notice_period_id: number | null
+          onboarding_at: number | null
+          onboarding_status: string | null
+          onboarding_status_changed_at: number | null
+          onboarding_steps: string[] | null
+          organization_id: number | null
+          passport_attachments: Json | null
+          payroll_type_id: number | null
+          phone_number: string | null
+          preferred_shift_ids: number[] | null
+          proof_of_address_attachments: Json | null
+          proof_of_national_insurance_attachments: Json | null
+          recruiter_id: number | null
+          reference_contact_number_1: string | null
+          reference_contact_number_2: string | null
+          reference_date_held_from_1: number | null
+          reference_date_held_from_2: number | null
+          reference_date_held_to_1: number | null
+          reference_date_held_to_2: number | null
+          reference_email_1: string | null
+          reference_email_2: string | null
+          reference_job_title_1: string | null
+          reference_job_title_2: string | null
+          reference_name_1: string | null
+          reference_name_2: string | null
+          reference_notice_period_1: string | null
+          reference_notice_period_2: string | null
+          reference_organization_1: string | null
+          reference_organization_2: string | null
+          reference_position_held_1: string | null
+          reference_position_held_2: string | null
+          registered_at: number | null
+          registration_attachment: Json | null
+          resourcer_id: number | null
+          rtw_attachments: Json | null
+          sent_to_portal_at: number | null
+          sign_contract_attachment: Json | null
+          surname: string | null
+          title: string | null
+          type_of_work: string | null
+          updated_at: number | null
+          yoti_attachments: Json | null
+          yoti_document_type: string | null
+          yoti_session_id: string | null
+          yoti_status: string | null
+          zoho_request_id: string | null
+          zoho_request_status: string | null
+          zoho_setting_id: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_candidates_address"
+            columns: ["address_id"]
+            isOneToOne: false
+            referencedRelation: "addresses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      companies_with_details: {
+        Row: {
+          address_id: number | null
+          advised_credit_rating: string | null
+          booking_count: number | null
+          company_address: string | null
+          company_city: string | null
+          company_postcode: string | null
+          company_status_id: number | null
+          contact_count: number | null
+          created_at: number | null
+          created_by_user_id: number | null
+          credit_limit: string | null
+          description: string | null
+          id: number | null
+          import_id: number | null
+          industry_ids: number[] | null
+          name: string | null
+          organization_id: number | null
+          owner_id: number | null
+          payroll_type_ids: number[] | null
+          phone_number: string | null
+          previous_company_status_id: number | null
+          primary_agency_id: number | null
+          updated_at: number | null
+          vat_number: string | null
+          website: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_companies_address"
+            columns: ["address_id"]
+            isOneToOne: false
+            referencedRelation: "addresses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       missing_contacts_with_notes: {
         Row: {
           candidate_id: number | null
@@ -4571,6 +4929,14 @@ export type Database = {
           old_organization_ids: number[]
         }
         Returns: number
+      }
+      validate_booking_data: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          booking_id: number
+          issue_type: string
+          issue_description: string
+        }[]
       }
     }
     Enums: {

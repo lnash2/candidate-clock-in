@@ -62,16 +62,8 @@ export const useCompanies = () => {
       const currentSearch = search !== undefined ? search : searchTerm;
       
       let query = supabase
-        .from('companies')
-        .select(`
-          *,
-          addresses (
-            formatted_address,
-            postal_code,
-            city,
-            country
-          )
-        `, { count: 'exact' })
+        .from('companies_with_details')
+        .select('*', { count: 'exact' })
         .order('name', { ascending: true })
         .limit(50000);
 
@@ -84,29 +76,18 @@ export const useCompanies = () => {
 
       if (error) throw error;
       
-      // Calculate additional metrics
-      const enrichedCompanies = await Promise.all((data || []).map(async (company) => {
-        // Get contact count
-        const { count: contactCount } = await supabase
-          .from('contacts')
-          .select('*', { count: 'exact', head: true })
-          .eq('company_id', company.id);
-
-        // Get notes count (using the get_total_notes function)
-        const { data: notesData } = await supabase
-          .rpc('get_total_notes', {
-            entitytype: 'company',
-            candidate_id: company.id,
-            organization_ids: company.organization_id ? [company.organization_id] : [],
-            old_organization_ids: []
-          });
-
-        return {
-          ...company,
-          totalContacts: contactCount || 0,
-          totalNotes: notesData || 0,
-          lastNote: '-' // Would need to implement get_last_note call
-        };
+      // Transform data from the view (already includes address and counts)
+      const enrichedCompanies = (data || []).map(company => ({
+        ...company,
+        address: {
+          formatted_address: company.company_address,
+          postal_code: company.company_postcode,
+          city: company.company_city,
+          country: null
+        },
+        totalContacts: company.contact_count || 0,
+        totalNotes: 0, // Can be enhanced later with proper notes counting
+        lastNote: '-'
       }));
       
       setCompanies(enrichedCompanies);
