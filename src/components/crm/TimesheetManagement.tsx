@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Play, Square, Clock, Calendar } from 'lucide-react';
 import { useBookings } from '@/hooks/useBookings';
-import { useCandidates } from '@/hooks/useCandidates';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TimesheetEntry {
   candidateId: number;
@@ -20,11 +20,12 @@ interface TimesheetEntry {
 
 const TimesheetManagement = () => {
   const { bookings, loading: bookingsLoading } = useBookings();
-  const { candidates, loading: candidatesLoading } = useCandidates();
   const { toast } = useToast();
   
   const [timesheetEntries, setTimesheetEntries] = useState<TimesheetEntry[]>([]);
   const [selectedWeek, setSelectedWeek] = useState(new Date());
+  const [candidates, setCandidates] = useState<any[]>([]);
+  const [candidatesLoading, setCandidatesLoading] = useState(false);
 
   // Generate dates for the current week
   const getWeekDates = (date: Date) => {
@@ -41,6 +42,49 @@ const TimesheetManagement = () => {
   };
 
   const weekDates = getWeekDates(selectedWeek);
+
+  // Fetch candidates that are referenced in approved bookings
+  useEffect(() => {
+    const fetchRequiredCandidates = async () => {
+      if (bookingsLoading || !bookings.length) return;
+      
+      setCandidatesLoading(true);
+      
+      // Get unique candidate IDs from approved bookings
+      const approvedBookings = bookings.filter(b => b.booking_status === 'approved');
+      const candidateIds = [...new Set(approvedBookings.map(b => b.candidate_id).filter(Boolean))];
+      
+      console.log('Need to fetch candidates for IDs:', candidateIds);
+      
+      if (candidateIds.length === 0) {
+        setCandidates([]);
+        setCandidatesLoading(false);
+        return;
+      }
+      
+      try {
+        const { data, error } = await supabase
+          .from('candidates')
+          .select('id, name')
+          .in('id', candidateIds);
+          
+        if (error) {
+          console.error('Error fetching candidates:', error);
+          setCandidates([]);
+        } else {
+          console.log('Fetched candidates:', data);
+          setCandidates(data || []);
+        }
+      } catch (err) {
+        console.error('Error fetching candidates:', err);
+        setCandidates([]);
+      } finally {
+        setCandidatesLoading(false);
+      }
+    };
+    
+    fetchRequiredCandidates();
+  }, [bookings, bookingsLoading]);
 
   useEffect(() => {
     if (!bookingsLoading && !candidatesLoading) {
