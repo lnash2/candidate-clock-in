@@ -1,15 +1,18 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { Building2, Users, Calendar, DollarSign, MessageSquare, TrendingUp } from 'lucide-react';
+import { Building2, Users, Calendar, DollarSign, MessageSquare, TrendingUp, Download } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, BarChart, Bar, ResponsiveContainer } from 'recharts';
+import { useReactToPrint } from 'react-to-print';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useCandidates } from '@/hooks/useCandidates';
 import { useBookings } from '@/hooks/useBookings';
 import { useCompanyRates } from '@/hooks/useCompanyRates';
 
 const CRMOverview = () => {
+  const componentRef = useRef<HTMLDivElement>(null);
   const { customers, loading: customersLoading } = useCustomers();
   const { candidates, loading: candidatesLoading } = useCandidates();
   const { bookings, loading: bookingsLoading } = useBookings();
@@ -98,9 +101,42 @@ const CRMOverview = () => {
     }
   }, [customers, candidates, bookings, rates, customersLoading, candidatesLoading, bookingsLoading, ratesLoading]);
 
+  const handlePrint = useReactToPrint({
+    contentRef: componentRef,
+    documentTitle: `CRM Dashboard - ${new Date().toLocaleDateString()}`,
+    pageStyle: `
+      @page {
+        size: A4;
+        margin: 0.5in;
+      }
+      @media print {
+        .no-print {
+          display: none !important;
+        }
+        .print-break {
+          page-break-before: always;
+        }
+      }
+    `,
+  });
+
   return (
     <div className="h-full bg-white pl-5 pr-6 py-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      <div className="flex justify-between items-center mb-6 no-print">
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
+        <Button onClick={handlePrint} className="flex items-center gap-2">
+          <Download className="h-4 w-4" />
+          Export as PDF
+        </Button>
+      </div>
+      
+      <div ref={componentRef} className="space-y-4">
+        <div className="print:hidden mb-4">
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">CRM Dashboard Report</h2>
+          <p className="text-sm text-gray-600">Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}</p>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Companies</CardTitle>
@@ -295,6 +331,7 @@ const CRMOverview = () => {
             </div>
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   );
