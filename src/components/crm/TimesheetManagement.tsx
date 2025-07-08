@@ -44,10 +44,42 @@ const TimesheetManagement = () => {
 
   useEffect(() => {
     if (!bookingsLoading && !candidatesLoading) {
-      // Get approved bookings only
-      const activeBookings = bookings.filter(b => 
-        b.status === 'approved' || b.booking_status === 'approved'
-      );
+      console.log('Processing bookings for timesheet:', bookings.length);
+      console.log('Selected week dates:', weekDates.map(d => d.toISOString().split('T')[0]));
+      
+      // Get the start and end of the selected week as Unix timestamps
+      const weekStart = Math.floor(weekDates[0].getTime() / 1000);
+      const weekEnd = Math.floor(weekDates[6].getTime() / 1000) + (24 * 60 * 60) - 1; // End of last day
+      
+      console.log('Week range (Unix):', weekStart, 'to', weekEnd);
+      console.log('Week range (dates):', new Date(weekStart * 1000), 'to', new Date(weekEnd * 1000));
+
+      // Get approved bookings that overlap with the selected week
+      const activeBookings = bookings.filter(booking => {
+        const isApproved = booking.booking_status === 'approved';
+        
+        if (!isApproved) {
+          return false;
+        }
+
+        // Check if booking date range overlaps with selected week
+        const bookingStart = booking.from_date; // Unix timestamp
+        const bookingEnd = booking.to_date; // Unix timestamp
+        
+        const hasOverlap = bookingStart <= weekEnd && bookingEnd >= weekStart;
+        
+        console.log(`Booking ${booking.id}:`, {
+          status: booking.booking_status,
+          fromDate: new Date(bookingStart * 1000),
+          toDate: new Date(bookingEnd * 1000),
+          hasOverlap,
+          candidateName: booking.candidates?.name || 'Unknown'
+        });
+        
+        return hasOverlap;
+      });
+
+      console.log('Filtered active bookings:', activeBookings.length);
 
       // Create timesheet entries for each candidate for each day of the week
       const entries: TimesheetEntry[] = [];
@@ -57,20 +89,26 @@ const TimesheetManagement = () => {
         if (candidate) {
           weekDates.forEach(date => {
             const dateStr = date.toISOString().split('T')[0];
-            entries.push({
-              candidateId: candidate.id,
-              candidateName: candidate.name || 'Unknown',
-              date: dateStr,
-              startTime: null,
-              endTime: null,
-              totalHours: 0,
-              isActive: false,
-              status: 'not_started'
-            });
+            const dayTimestamp = Math.floor(date.getTime() / 1000);
+            
+            // Only create entry if this specific day falls within the booking period
+            if (dayTimestamp >= booking.from_date && dayTimestamp <= booking.to_date) {
+              entries.push({
+                candidateId: candidate.id,
+                candidateName: candidate.name || booking.candidates?.name || 'Unknown',
+                date: dateStr,
+                startTime: null,
+                endTime: null,
+                totalHours: 0,
+                isActive: false,
+                status: 'not_started'
+              });
+            }
           });
         }
       });
 
+      console.log('Generated timesheet entries:', entries.length);
       setTimesheetEntries(entries);
     }
   }, [bookings, candidates, bookingsLoading, candidatesLoading, selectedWeek]);
