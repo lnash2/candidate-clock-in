@@ -44,9 +44,9 @@ const TimesheetManagement = () => {
 
   useEffect(() => {
     if (!bookingsLoading && !candidatesLoading) {
-      // Get active bookings
+      // Get approved bookings only
       const activeBookings = bookings.filter(b => 
-        b.status === 'open' || b.status === 'confirmed' || b.status === 'in_progress'
+        b.status === 'approved' || b.booking_status === 'approved'
       );
 
       // Create timesheet entries for each candidate for each day of the week
@@ -191,8 +191,8 @@ const TimesheetManagement = () => {
         <Card>
           <CardContent className="text-center py-12">
             <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Active Bookings</h3>
-            <p className="text-gray-600">There are no active bookings to track time for this week.</p>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Approved Bookings</h3>
+            <p className="text-gray-600">There are no approved bookings to track time for this week.</p>
           </CardContent>
         </Card>
       ) : (
@@ -300,7 +300,7 @@ const TimesheetManagement = () => {
               <div className="text-2xl font-bold text-blue-600">
                 {activeCandidates.length}
               </div>
-              <div className="text-sm text-gray-600">Active Candidates</div>
+              <div className="text-sm text-gray-600">Approved Candidates</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
