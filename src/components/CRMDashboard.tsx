@@ -6,6 +6,7 @@ import CRMOverview from '@/components/crm/CRMOverview';
 import CompanyManagement from '@/components/crm/CompanyManagement';
 import ContactManagement from '@/components/crm/ContactManagement';
 import CandidateManagement from '@/components/crm/CandidateManagement';
+import VacancyManagement from '@/components/crm/VacancyManagement';
 import BookingManagement from '@/components/crm/BookingManagement';
 import TimesheetManagement from '@/components/crm/TimesheetManagement';
 import CommunicationTracking from '@/components/crm/CommunicationTracking';
@@ -25,6 +26,8 @@ const CRMDashboard = () => {
         return <ContactManagement />;
       case 'candidates':
         return <CandidateManagement />;
+      case 'vacancies':
+        return <VacancyManagement />;
       case 'bookings':
         return <BookingManagement />;
       case 'timesheets':

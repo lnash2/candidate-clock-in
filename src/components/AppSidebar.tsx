@@ -1,5 +1,5 @@
 
-import { Home, Building2, Users, UserCheck, Calendar, MessageSquare, Calculator, Settings, Database, Clock } from "lucide-react"
+import { Home, Building2, Users, UserCheck, Briefcase, Calendar, MessageSquare, Calculator, Settings, Database, Clock } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -31,6 +31,11 @@ const menuItems = [
     title: "Candidates", 
     icon: UserCheck,
     id: "candidates",
+  },
+  {
+    title: "Vacancies",
+    icon: Briefcase,
+    id: "vacancies",
   },
   {
     title: "Bookings",
