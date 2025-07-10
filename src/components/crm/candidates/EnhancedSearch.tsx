@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, X } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { Search, X, Info } from 'lucide-react';
 
 interface EnhancedSearchProps {
   onSearch: (term: string) => void;
@@ -41,8 +42,8 @@ export const EnhancedSearch: React.FC<EnhancedSearchProps> = ({
   };
 
   return (
-    <div className="space-y-3">
-      <div className="relative">
+    <div className="flex items-center space-x-2">
+      <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
         <Input
           placeholder="Search candidates by name, email, phone, address, postcode, NI number, or job title..."
@@ -62,30 +63,30 @@ export const EnhancedSearch: React.FC<EnhancedSearchProps> = ({
         )}
       </div>
 
-      {/* Search Results Info */}
-      {searchTerm && (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Badge variant="outline">
-              Search: "{searchTerm}"
-            </Badge>
-            {resultsCount !== undefined && (
-              <span className="text-sm text-muted-foreground">
-                {loading ? 'Searching...' : `${resultsCount} results`}
-              </span>
-            )}
-          </div>
-          <Button variant="ghost" size="sm" onClick={clearSearch}>
-            Clear search
-          </Button>
-        </div>
-      )}
+      {/* Compact search info */}
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <Info className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p className="text-sm">Search across: Name, Email, Phone, Address, Postcode, NI Number, Job Title</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
 
-      {/* Search Help */}
-      {!searchTerm && (
-        <p className="text-xs text-muted-foreground">
-          Search across: Name, Email, Phone, Address, Postcode, NI Number, Job Title
-        </p>
+      {/* Compact results display */}
+      {searchTerm && (
+        <div className="flex items-center space-x-2 text-sm">
+          <Badge variant="outline">"{searchTerm}"</Badge>
+          {resultsCount !== undefined && (
+            <span className="text-muted-foreground">
+              {loading ? '...' : resultsCount}
+            </span>
+          )}
+        </div>
       )}
     </div>
   );

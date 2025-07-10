@@ -201,12 +201,12 @@ const CandidateManagement = () => {
 
       {/* Enhanced Candidates Table */}
       <div className="crm-table">
-        <div className="p-6 border-b border-border space-y-6">
+        <div className="p-4 border-b border-border space-y-3">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-foreground">Candidate Directory</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                {hookSearchTerm ? `Search results for "${hookSearchTerm}"` : `Total: ${pagination.total.toLocaleString()} candidates from your legacy database`}
+              <p className="text-sm text-muted-foreground">
+                Total: {pagination.total.toLocaleString()} candidates
               </p>
             </div>
             <div className="flex items-center space-x-2">
@@ -216,30 +216,38 @@ const CandidateManagement = () => {
             </div>
           </div>
 
-          {/* Enhanced Search */}
-          <EnhancedSearch
-            onSearch={hookSearch}
-            searchTerm={hookSearchTerm}
-            resultsCount={pagination.total}
-            loading={loading}
-          />
-
-          {/* Advanced Filters */}
-          <AdvancedFilters
-            filters={filters as FilterState}
-            onFiltersChange={(newFilters) => updateFilters(newFilters as any)}
-            onClearFilters={clearFilters}
-          />
+          {/* Compact Search and Filters Row */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1">
+              <EnhancedSearch
+                onSearch={hookSearch}
+                searchTerm={hookSearchTerm}
+                resultsCount={pagination.total}
+                loading={loading}
+              />
+            </div>
+            <AdvancedFilters
+              filters={filters as FilterState}
+              onFiltersChange={(newFilters) => updateFilters(newFilters as any)}
+              onClearFilters={clearFilters}
+            />
+          </div>
           
-          <DataTablePagination
-            pagination={pagination}
-            onPageChange={goToPage}
-            onPageSizeChange={changePageSize}
-            onSearch={hookSearch}
-            searchTerm={hookSearchTerm}
-            searchPlaceholder="Search candidates..."
-            loading={loading}
-          />
+          {/* Compact Pagination */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">
+              Showing {((pagination.page - 1) * pagination.pageSize) + 1}-{Math.min(pagination.page * pagination.pageSize, pagination.total)} of {pagination.total}
+            </span>
+            <DataTablePagination
+              pagination={pagination}
+              onPageChange={goToPage}
+              onPageSizeChange={changePageSize}
+              onSearch={hookSearch}
+              searchTerm={hookSearchTerm}
+              searchPlaceholder="Search candidates..."
+              loading={loading}
+            />
+          </div>
         </div>
         
         <EnhancedCandidatesTable
