@@ -28,6 +28,10 @@ export interface Vacancy {
   address?: string;
   city?: string;
   postcode?: string;
+  recruiter_name?: string;
+  resourcer_name?: string;
+  industry_names?: string[];
+  job_category_names?: string[];
 }
 
 export interface VacancyStatus {
@@ -58,16 +62,21 @@ export const useVacancies = () => {
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
-    status_id: '',
-    company_id: '',
-    assigned_contact_id: ''
+    status_id: 'all',
+    company_id: 'all',
+    assigned_contact_id: 'all',
+    recruiter_id: 'all',
+    resourcer_id: 'all',
+    industry_id: 'all',
+    job_category_id: 'all',
+    organization_id: 'all',
+    postcode: ''
   });
   const { toast } = useToast();
 
   const fetchVacancies = async (page?: number, search?: string, currentFilters?: any) => {
     try {
       setLoading(true);
-      const currentPage = page || pagination.page;
       const currentSearch = search !== undefined ? search : searchTerm;
       const appliedFilters = currentFilters || filters;
       
@@ -78,20 +87,29 @@ export const useVacancies = () => {
         .order('created_at', { ascending: false })
         .limit(50000);
 
-      // Add search functionality
+      // Add search functionality - search across multiple fields
       if (currentSearch) {
         vacanciesQuery = vacanciesQuery.or(`title.ilike.%${currentSearch}%,description.ilike.%${currentSearch}%`);
       }
 
       // Add filters
-      if (appliedFilters.status_id) {
+      if (appliedFilters.status_id && appliedFilters.status_id !== 'all') {
         vacanciesQuery = vacanciesQuery.eq('vacancy_status_id', appliedFilters.status_id);
       }
-      if (appliedFilters.company_id) {
+      if (appliedFilters.company_id && appliedFilters.company_id !== 'all') {
         vacanciesQuery = vacanciesQuery.eq('company_id', appliedFilters.company_id);
       }
-      if (appliedFilters.assigned_contact_id) {
+      if (appliedFilters.assigned_contact_id && appliedFilters.assigned_contact_id !== 'all') {
         vacanciesQuery = vacanciesQuery.eq('assigned_contact_id', appliedFilters.assigned_contact_id);
+      }
+      if (appliedFilters.recruiter_id && appliedFilters.recruiter_id !== 'all') {
+        vacanciesQuery = vacanciesQuery.eq('recruiter_id', appliedFilters.recruiter_id);
+      }
+      if (appliedFilters.resourcer_id && appliedFilters.resourcer_id !== 'all') {
+        vacanciesQuery = vacanciesQuery.eq('resourcer_id', appliedFilters.resourcer_id);
+      }
+      if (appliedFilters.organization_id && appliedFilters.organization_id !== 'all') {
+        vacanciesQuery = vacanciesQuery.eq('organization_id', appliedFilters.organization_id);
       }
 
       const { data: vacanciesData, error: vacanciesError, count } = await vacanciesQuery;
@@ -99,11 +117,13 @@ export const useVacancies = () => {
       if (vacanciesError) throw vacanciesError;
 
       // Fetch related data separately
-      const [companiesData, contactsData, statusesData, addressesData] = await Promise.all([
+      const [companiesData, contactsData, statusesData, addressesData, industriesData, jobCategoriesData] = await Promise.all([
         supabase.from('companies').select('id, name'),
         supabase.from('contacts').select('id, name'),
         supabase.from('vacancy_statuses').select('id, name, color'),
-        supabase.from('addresses').select('id, formatted_address, city, postal_code')
+        supabase.from('addresses').select('id, formatted_address, city, postal_code'),
+        supabase.from('industry_types').select('id, name'),
+        supabase.from('job_categories').select('id, name')
       ]);
 
       // Create lookup maps for efficient joining
@@ -111,14 +131,25 @@ export const useVacancies = () => {
       const contactsMap = new Map(contactsData.data?.map(c => [c.id, c]) || []);
       const statusesMap = new Map(statusesData.data?.map(s => [s.id, s]) || []);
       const addressesMap = new Map(addressesData.data?.map(a => [a.id, a]) || []);
+      const industriesMap = new Map(industriesData.data?.map(i => [i.id, i]) || []);
+      const jobCategoriesMap = new Map(jobCategoriesData.data?.map(j => [j.id, j]) || []);
 
-      
       // Transform data to flatten joined relationships using the lookup maps
       const enrichedVacancies = (vacanciesData || []).map((vacancy: any) => {
         const company = companiesMap.get(vacancy.company_id);
         const contact = contactsMap.get(vacancy.assigned_contact_id);
         const status = statusesMap.get(vacancy.vacancy_status_id);
         const address = addressesMap.get(vacancy.address_id);
+
+        // Map industry IDs to names
+        const industryNames = (vacancy.industry_ids || [])
+          .map((id: number) => industriesMap.get(id)?.name)
+          .filter(Boolean);
+
+        // Map job category IDs to names
+        const jobCategoryNames = (vacancy.job_category_ids || [])
+          .map((id: number) => jobCategoriesMap.get(id)?.name)
+          .filter(Boolean);
 
         return {
           ...vacancy,
@@ -128,19 +159,45 @@ export const useVacancies = () => {
           status_color: status?.color || '#gray',
           address: address?.formatted_address || 'No Address',
           city: address?.city || '',
-          postcode: address?.postal_code || ''
+          postcode: address?.postal_code || '',
+          recruiter_name: vacancy.recruiter_id ? `User ${vacancy.recruiter_id}` : 'Unassigned',
+          resourcer_name: vacancy.resourcer_id ? `User ${vacancy.resourcer_id}` : 'Unassigned',
+          industry_names: industryNames,
+          job_category_names: jobCategoryNames
         };
       });
+
+      // Apply additional text-based filters
+      let filteredVacancies = enrichedVacancies;
       
-      setVacancies(enrichedVacancies);
+      if (appliedFilters.postcode) {
+        filteredVacancies = filteredVacancies.filter(v => 
+          v.postcode?.toLowerCase().includes(appliedFilters.postcode.toLowerCase())
+        );
+      }
+
+      // Apply additional search to company and contact names if search term is present
+      if (currentSearch) {
+        const searchLower = currentSearch.toLowerCase();
+        filteredVacancies = filteredVacancies.filter(v => 
+          v.title?.toLowerCase().includes(searchLower) ||
+          v.description?.toLowerCase().includes(searchLower) ||
+          v.company_name?.toLowerCase().includes(searchLower) ||
+          v.contact_name?.toLowerCase().includes(searchLower) ||
+          v.address?.toLowerCase().includes(searchLower) ||
+          v.postcode?.toLowerCase().includes(searchLower)
+        );
+      }
+      
+      setVacancies(filteredVacancies);
       setPagination(prev => ({
         ...prev,
-        page: currentPage,
-        total: count || 0,
-        totalPages: Math.ceil((count || 0) / prev.pageSize)
+        page: 1,
+        total: filteredVacancies.length,
+        totalPages: Math.ceil(filteredVacancies.length / prev.pageSize)
       }));
       
-      console.log(`✅ VACANCIES: Fetched ${enrichedVacancies.length} vacancies out of ${count || 0} total`);
+      console.log(`✅ VACANCIES: Fetched ${filteredVacancies.length} vacancies out of ${count || 0} total`);
     } catch (err) {
       console.error('Error fetching vacancies:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');

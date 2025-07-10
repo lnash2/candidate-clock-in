@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useVacancies } from '@/hooks/useVacancies';
 import VacancyFormDialog from './VacancyFormDialog';
-import VacancyFilters from './VacancyFilters';
+
 import { Edit, Trash2, Search, Download, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -133,7 +133,7 @@ const VacanciesTable = () => {
               className="pl-9"
             />
           </div>
-          <VacancyFilters />
+          
         </div>
         
         <div className="flex items-center gap-2">

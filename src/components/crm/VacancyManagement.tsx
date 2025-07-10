@@ -4,13 +4,54 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MetricCard } from '@/components/ui/metric-card';
 import { PageLoading } from '@/components/ui/loading';
 import { useVacancies } from '@/hooks/useVacancies';
-import VacanciesTable from './vacancies/VacanciesTable';
+import { EnhancedVacanciesTable } from './vacancies/EnhancedVacanciesTable';
+import { ColumnVisibilityManager, ColumnConfig } from './vacancies/ColumnVisibilityManager';
+import { AdvancedFilters, FilterState } from './vacancies/AdvancedFilters';
+import { EnhancedSearch } from './vacancies/EnhancedSearch';
 import VacancyFormDialog from './vacancies/VacancyFormDialog';
 import { Plus, Briefcase, Building, UserCheck, Clock } from 'lucide-react';
 
 const VacancyManagement = () => {
-  const { vacancies, statuses, loading } = useVacancies();
+  const {
+    vacancies,
+    loading,
+    searchTerm,
+    search,
+    applyFilters,
+    filters
+  } = useVacancies();
+  
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [columns, setColumns] = useState<ColumnConfig[]>([]);
+  const [selectedVacancy, setSelectedVacancy] = useState<any>(null);
+
+  const handleView = (vacancy: any) => {
+    setSelectedVacancy(vacancy);
+    setIsDialogOpen(true);
+  };
+
+  const handleEdit = (vacancy: any) => {
+    setSelectedVacancy(vacancy);
+    setIsDialogOpen(true);
+  };
+
+  const clearSearch = () => {
+    search('');
+  };
+
+  const clearFilters = () => {
+    applyFilters({
+      status_id: 'all',
+      company_id: 'all',
+      assigned_contact_id: 'all',
+      recruiter_id: 'all',
+      resourcer_id: 'all',
+      industry_id: 'all',
+      job_category_id: 'all',
+      organization_id: 'all',
+      postcode: ''
+    });
+  };
 
   if (loading) {
     return <PageLoading />;
@@ -72,19 +113,50 @@ const VacancyManagement = () => {
         />
       </div>
 
-      {/* Vacancies Table */}
+      {/* Enhanced Vacancies Table */}
       <Card>
         <CardHeader>
           <CardTitle>All Vacancies</CardTitle>
         </CardHeader>
         <CardContent>
-          <VacanciesTable />
+          <div className="space-y-4">
+            {/* Search and Filter Controls */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-between">
+              <div className="flex-1">
+                <EnhancedSearch
+                  searchTerm={searchTerm}
+                  onSearch={search}
+                  onClearSearch={clearSearch}
+                />
+              </div>
+              <div className="flex gap-2">
+                <AdvancedFilters
+                  filters={filters as FilterState}
+                  onFiltersChange={applyFilters}
+                  onClearFilters={clearFilters}
+                />
+                <ColumnVisibilityManager onColumnsChange={setColumns} />
+              </div>
+            </div>
+
+            {/* Enhanced Table */}
+            <EnhancedVacanciesTable
+              vacancies={vacancies}
+              columns={columns}
+              onView={handleView}
+              onEdit={handleEdit}
+            />
+          </div>
         </CardContent>
       </Card>
 
       <VacancyFormDialog 
         open={isDialogOpen} 
-        onOpenChange={setIsDialogOpen}
+        onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) setSelectedVacancy(null);
+        }}
+        vacancy={selectedVacancy}
       />
     </div>
   );
