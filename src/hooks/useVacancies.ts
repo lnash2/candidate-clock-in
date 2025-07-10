@@ -71,49 +71,66 @@ export const useVacancies = () => {
       const currentSearch = search !== undefined ? search : searchTerm;
       const appliedFilters = currentFilters || filters;
       
-      let query = supabase
+      // First, fetch vacancies with a simple query
+      let vacanciesQuery = supabase
         .from('vacancies')
-        .select(`
-          *,
-          companies(name),
-          contacts(name),
-          vacancy_statuses(name, color),
-          addresses(formatted_address, city, postal_code)
-        `, { count: 'exact' })
+        .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
         .limit(50000);
 
       // Add search functionality
       if (currentSearch) {
-        query = query.or(`title.ilike.%${currentSearch}%,description.ilike.%${currentSearch}%`);
+        vacanciesQuery = vacanciesQuery.or(`title.ilike.%${currentSearch}%,description.ilike.%${currentSearch}%`);
       }
 
       // Add filters
       if (appliedFilters.status_id) {
-        query = query.eq('vacancy_status_id', appliedFilters.status_id);
+        vacanciesQuery = vacanciesQuery.eq('vacancy_status_id', appliedFilters.status_id);
       }
       if (appliedFilters.company_id) {
-        query = query.eq('company_id', appliedFilters.company_id);
+        vacanciesQuery = vacanciesQuery.eq('company_id', appliedFilters.company_id);
       }
       if (appliedFilters.assigned_contact_id) {
-        query = query.eq('assigned_contact_id', appliedFilters.assigned_contact_id);
+        vacanciesQuery = vacanciesQuery.eq('assigned_contact_id', appliedFilters.assigned_contact_id);
       }
 
-      const { data, error, count } = await query;
+      const { data: vacanciesData, error: vacanciesError, count } = await vacanciesQuery;
 
-      if (error) throw error;
+      if (vacanciesError) throw vacanciesError;
+
+      // Fetch related data separately
+      const [companiesData, contactsData, statusesData, addressesData] = await Promise.all([
+        supabase.from('companies').select('id, name'),
+        supabase.from('contacts').select('id, name'),
+        supabase.from('vacancy_statuses').select('id, name, color'),
+        supabase.from('addresses').select('id, formatted_address, city, postal_code')
+      ]);
+
+      // Create lookup maps for efficient joining
+      const companiesMap = new Map(companiesData.data?.map(c => [c.id, c]) || []);
+      const contactsMap = new Map(contactsData.data?.map(c => [c.id, c]) || []);
+      const statusesMap = new Map(statusesData.data?.map(s => [s.id, s]) || []);
+      const addressesMap = new Map(addressesData.data?.map(a => [a.id, a]) || []);
+
       
-      // Transform data to flatten joined relationships
-      const enrichedVacancies = (data || []).map((vacancy: any) => ({
-        ...vacancy,
-        company_name: vacancy.companies?.[0]?.name || 'No Company',
-        contact_name: vacancy.contacts?.[0]?.name || 'Unassigned',
-        status_name: vacancy.vacancy_statuses?.[0]?.name || 'No Status',
-        status_color: vacancy.vacancy_statuses?.[0]?.color || '#gray',
-        address: vacancy.addresses?.[0]?.formatted_address || 'No Address',
-        city: vacancy.addresses?.[0]?.city || '',
-        postcode: vacancy.addresses?.[0]?.postal_code || ''
-      }));
+      // Transform data to flatten joined relationships using the lookup maps
+      const enrichedVacancies = (vacanciesData || []).map((vacancy: any) => {
+        const company = companiesMap.get(vacancy.company_id);
+        const contact = contactsMap.get(vacancy.assigned_contact_id);
+        const status = statusesMap.get(vacancy.vacancy_status_id);
+        const address = addressesMap.get(vacancy.address_id);
+
+        return {
+          ...vacancy,
+          company_name: company?.name || 'No Company',
+          contact_name: contact?.name || 'Unassigned',
+          status_name: status?.name || 'No Status',
+          status_color: status?.color || '#gray',
+          address: address?.formatted_address || 'No Address',
+          city: address?.city || '',
+          postcode: address?.postal_code || ''
+        };
+      });
       
       setVacancies(enrichedVacancies);
       setPagination(prev => ({
