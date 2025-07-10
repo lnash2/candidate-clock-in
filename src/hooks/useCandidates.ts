@@ -45,6 +45,17 @@ export interface PaginationState {
   totalPages: number;
 }
 
+export interface AdvancedFilters {
+  active_status: string;
+  onboarding_status: string;
+  registration_status: string;
+  payroll_type: string;
+  recruiter: string;
+  resourcer: string;
+  postcode: string;
+  job_title: string;
+}
+
 export const useCandidates = () => {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,14 +67,25 @@ export const useCandidates = () => {
     totalPages: 0
   });
   const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState<AdvancedFilters>({
+    active_status: 'all',
+    onboarding_status: 'all',
+    registration_status: 'all',
+    payroll_type: 'all',
+    recruiter: 'all',
+    resourcer: 'all',
+    postcode: '',
+    job_title: ''
+  });
   const { toast } = useToast();
 
-  const fetchCandidates = async (page?: number, search?: string, pageSize?: number) => {
+  const fetchCandidates = async (page?: number, search?: string, pageSize?: number, advancedFilters?: AdvancedFilters) => {
     try {
       setLoading(true);
       const currentPage = page || pagination.page;
       const currentSearch = search !== undefined ? search : searchTerm;
       const currentPageSize = pageSize || pagination.pageSize;
+      const currentFilters = advancedFilters || filters;
       
       let query = supabase
         .from('candidates')
@@ -71,9 +93,23 @@ export const useCandidates = () => {
         .order('name', { ascending: true })
         .range((currentPage - 1) * currentPageSize, currentPage * currentPageSize - 1);
 
-      // Add search functionality
+      // Enhanced search functionality - search across multiple fields
       if (currentSearch) {
-        query = query.or(`name.ilike.%${currentSearch}%,email.ilike.%${currentSearch}%,phone_number.ilike.%${currentSearch}%`);
+        query = query.or(`name.ilike.%${currentSearch}%,email.ilike.%${currentSearch}%,phone_number.ilike.%${currentSearch}%,ni_number.ilike.%${currentSearch}%,job_title.ilike.%${currentSearch}%,company_name.ilike.%${currentSearch}%`);
+      }
+
+      // Apply advanced filters
+      if (currentFilters.active_status && currentFilters.active_status !== 'all') {
+        query = query.eq('active_status', currentFilters.active_status);
+      }
+      
+      if (currentFilters.postcode) {
+        // This would need to join with addresses table in a real implementation
+        // For now, we'll filter on the frontend since addresses are in a separate table
+      }
+      
+      if (currentFilters.job_title) {
+        query = query.ilike('job_title', `%${currentFilters.job_title}%`);
       }
 
       const { data, error, count } = await query;
@@ -124,12 +160,34 @@ export const useCandidates = () => {
   const search = (term: string) => {
     setSearchTerm(term);
     setPagination(prev => ({ ...prev, page: 1 }));
-    fetchCandidates(1, term);
+    fetchCandidates(1, term, undefined, filters);
+  };
+
+  const updateFilters = (newFilters: AdvancedFilters) => {
+    setFilters(newFilters);
+    setPagination(prev => ({ ...prev, page: 1 }));
+    fetchCandidates(1, searchTerm, undefined, newFilters);
+  };
+
+  const clearFilters = () => {
+    const clearedFilters: AdvancedFilters = {
+      active_status: 'all',
+      onboarding_status: 'all',
+      registration_status: 'all',
+      payroll_type: 'all',
+      recruiter: 'all',
+      resourcer: 'all',
+      postcode: '',
+      job_title: ''
+    };
+    setFilters(clearedFilters);
+    setPagination(prev => ({ ...prev, page: 1 }));
+    fetchCandidates(1, searchTerm, undefined, clearedFilters);
   };
 
   const changePageSize = (newPageSize: number) => {
     setPagination(prev => ({ ...prev, page: 1, pageSize: newPageSize }));
-    fetchCandidates(1, searchTerm, newPageSize);
+    fetchCandidates(1, searchTerm, newPageSize, filters);
   };
 
   const createCandidate = async (candidateData: any) => {
@@ -273,12 +331,15 @@ export const useCandidates = () => {
     error,
     pagination,
     searchTerm,
+    filters,
     fetchCandidates,
     createCandidate,
     updateCandidate,
     deleteCandidate,
     goToPage,
     search,
+    updateFilters,
+    clearFilters,
     changePageSize,
   };
 };

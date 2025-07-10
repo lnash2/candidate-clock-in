@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Users, UserCheck, Clock, Shield } from 'lucide-react';
+import { Plus, Search, Users, UserCheck, Clock, Shield, Filter, Settings2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import CandidatesTableAdvanced from './candidates/CandidatesTableAdvanced';
 import CandidateFormDialog from './candidates/CandidateFormDialog';
 import CandidateDetailDialog from './candidates/CandidateDetailDialog';
 import { Candidate, CandidateFormData } from './candidates/types';
@@ -12,20 +11,28 @@ import { useCandidates } from '@/hooks/useCandidates';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { MetricCard } from '@/components/ui/metric-card';
 import { PageLoading } from '@/components/ui/loading';
+import { ColumnVisibilityManager, ColumnConfig } from './candidates/ColumnVisibilityManager';
+import { AdvancedFilters, FilterState } from './candidates/AdvancedFilters';
+import { EnhancedSearch } from './candidates/EnhancedSearch';
+import { EnhancedCandidatesTable } from './candidates/EnhancedCandidatesTable';
 
 const CandidateManagement = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [editingCandidate, setEditingCandidate] = useState<Candidate | null>(null);
   const [viewingCandidate, setViewingCandidate] = useState<Candidate | null>(null);
+  const [columns, setColumns] = useState<ColumnConfig[]>([]);
   const { toast } = useToast();
   const { 
     candidates, 
     loading, 
     pagination,
     searchTerm: hookSearchTerm,
+    filters,
     goToPage,
     search: hookSearch,
+    updateFilters,
+    clearFilters,
     changePageSize,
     createCandidate, 
     updateCandidate, 
@@ -194,8 +201,8 @@ const CandidateManagement = () => {
 
       {/* Enhanced Candidates Table */}
       <div className="crm-table">
-        <div className="p-6 border-b border-border">
-          <div className="flex items-center justify-between mb-4">
+        <div className="p-6 border-b border-border space-y-6">
+          <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-foreground">Candidate Directory</h3>
               <p className="text-sm text-muted-foreground mt-1">
@@ -203,10 +210,26 @@ const CandidateManagement = () => {
               </p>
             </div>
             <div className="flex items-center space-x-2">
+              <ColumnVisibilityManager onColumnsChange={setColumns} />
               <Button variant="outline" size="sm">Import</Button>
               <Button variant="outline" size="sm">Export</Button>
             </div>
           </div>
+
+          {/* Enhanced Search */}
+          <EnhancedSearch
+            onSearch={hookSearch}
+            searchTerm={hookSearchTerm}
+            resultsCount={pagination.total}
+            loading={loading}
+          />
+
+          {/* Advanced Filters */}
+          <AdvancedFilters
+            filters={filters as FilterState}
+            onFiltersChange={(newFilters) => updateFilters(newFilters as any)}
+            onClearFilters={clearFilters}
+          />
           
           <DataTablePagination
             pagination={pagination}
@@ -219,8 +242,9 @@ const CandidateManagement = () => {
           />
         </div>
         
-        <CandidatesTableAdvanced
+        <EnhancedCandidatesTable
           candidates={mappedCandidates}
+          columns={columns}
           onView={handleViewCandidate}
           onEdit={handleEditClick}
           onTogglePortalAccess={handleTogglePortalAccess}
