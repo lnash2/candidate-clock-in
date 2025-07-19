@@ -7,6 +7,7 @@ import { Plus, Building2, Users, Phone, MapPin, Calendar, TrendingUp, Activity }
 import { useCompanies } from '@/hooks/useCompanies';
 import { useBookings } from '@/hooks/useBookings';
 import { DataTable } from '@/components/ui/data-table';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { MetricCard } from '@/components/ui/metric-card';
 import { PageLoading } from '@/components/ui/loading';
 
@@ -15,11 +16,19 @@ interface CompanyManagementProps {
 }
 
 const CompanyManagement = ({ onCompanySelect }: CompanyManagementProps) => {
-  const { companies, loading: companiesLoading, searchTerm, search } = useCompanies();
+  const { 
+    companies, 
+    loading: companiesLoading, 
+    searchTerm, 
+    search,
+    pagination,
+    goToPage,
+    changePageSize
+  } = useCompanies();
   const { bookings, loading: bookingsLoading } = useBookings();
   
-  // Calculate comprehensive stats
-  const totalCompanies = companies.length;
+  // Calculate comprehensive stats using pagination.total instead of companies.length
+  const totalCompanies = pagination.total;
   const activeCompanies = companies.filter(c => c.company_status_id).length;
   const companiesWithBookings = companies.filter(c => 
     bookings.some(b => b.company_id === c.id)
@@ -165,7 +174,7 @@ const CompanyManagement = ({ onCompanySelect }: CompanyManagementProps) => {
       {/* Data Table */}
       <DataTable
         title="Company Directory"
-        description={`Showing ${companies.length} companies from your legacy database`}
+        description={`Showing ${(pagination.page - 1) * pagination.pageSize + 1} - ${Math.min(pagination.page * pagination.pageSize, pagination.total)} of ${pagination.total.toLocaleString()} companies`}
         columns={columns}
         data={companies}
         searchTerm={searchTerm}
@@ -181,6 +190,17 @@ const CompanyManagement = ({ onCompanySelect }: CompanyManagementProps) => {
             </Button>
           </div>
         }
+      />
+
+      {/* Add Pagination Controls */}
+      <DataTablePagination
+        pagination={pagination}
+        onPageChange={goToPage}
+        onPageSizeChange={changePageSize}
+        onSearch={search}
+        searchTerm={searchTerm}
+        searchPlaceholder="Search companies..."
+        loading={companiesLoading}
       />
     </div>
   );
