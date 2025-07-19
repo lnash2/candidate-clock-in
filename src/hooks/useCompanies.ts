@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -48,7 +49,7 @@ export const useCompanies = () => {
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState<PaginationState>({
     page: 1,
-    pageSize: 50000,
+    pageSize: 200,
     total: 0,
     totalPages: 0
   });
@@ -61,11 +62,15 @@ export const useCompanies = () => {
       const currentPage = page || pagination.page;
       const currentSearch = search !== undefined ? search : searchTerm;
       
+      // Calculate range for pagination
+      const from = (currentPage - 1) * pagination.pageSize;
+      const to = from + pagination.pageSize - 1;
+      
       let query = supabase
         .from('companies_with_details')
         .select('*', { count: 'exact' })
         .order('name', { ascending: true })
-        .limit(50000);
+        .range(from, to);
 
       // Add search functionality
       if (currentSearch) {
@@ -98,7 +103,7 @@ export const useCompanies = () => {
         totalPages: Math.ceil((count || 0) / prev.pageSize)
       }));
       
-      console.log(`✅ COMPANIES: Fetched ${enrichedCompanies.length} companies out of ${count || 0} total`);
+      console.log(`✅ COMPANIES: Fetched ${enrichedCompanies.length} companies (page ${currentPage}/${Math.ceil((count || 0) / pagination.pageSize)}) out of ${count || 0} total`);
     } catch (err) {
       console.error('Error fetching companies:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -111,6 +116,15 @@ export const useCompanies = () => {
     if (page >= 1 && page <= pagination.totalPages) {
       fetchCompanies(page);
     }
+  };
+
+  const changePageSize = (newPageSize: number) => {
+    setPagination(prev => ({
+      ...prev,
+      pageSize: newPageSize,
+      page: 1
+    }));
+    fetchCompanies(1);
   };
 
   const search = (term: string) => {
@@ -201,7 +215,7 @@ export const useCompanies = () => {
 
   useEffect(() => {
     fetchCompanies();
-  }, []);
+  }, [pagination.pageSize]);
 
   return {
     companies,
@@ -214,6 +228,7 @@ export const useCompanies = () => {
     updateCompany,
     deleteCompany,
     goToPage,
+    changePageSize,
     search,
   };
 };

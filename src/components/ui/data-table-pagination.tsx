@@ -138,7 +138,7 @@ export function DataTablePagination({
           {/* Page number buttons */}
           <div className="flex items-center space-x-1">
             {pageNumbers.map((pageNum, index) => (
-              <React.Fragment key={index}>
+              <div key={index}>
                 {pageNum === '...' ? (
                   <span className="px-2 py-1 text-sm text-muted-foreground">...</span>
                 ) : (
@@ -151,7 +151,7 @@ export function DataTablePagination({
                     {pageNum}
                   </Button>
                 )}
-              </React.Fragment>
+              </div>
             ))}
           </div>
 

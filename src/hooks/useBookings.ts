@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -67,19 +66,48 @@ export interface Booking {
   };
 }
 
+export interface PaginationState {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
 export const useBookings = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<PaginationState>({
+    page: 1,
+    pageSize: 200,
+    total: 0,
+    totalPages: 0
+  });
+  const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
 
-  const fetchBookings = async () => {
+  const fetchBookings = async (page?: number, search?: string) => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const currentPage = page || pagination.page;
+      const currentSearch = search !== undefined ? search : searchTerm;
+      
+      // Calculate range for pagination
+      const from = (currentPage - 1) * pagination.pageSize;
+      const to = from + pagination.pageSize - 1;
+      
+      let query = supabase
         .from('bookings_with_details')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
+      // Add search functionality
+      if (currentSearch) {
+        query = query.or(`company_name.ilike.%${currentSearch}%,candidate_name.ilike.%${currentSearch}%,contact_name.ilike.%${currentSearch}%,booking_status.ilike.%${currentSearch}%`);
+      }
+
+      const { data, error, count } = await query;
 
       if (error) throw error;
       
@@ -110,12 +138,41 @@ export const useBookings = () => {
       }));
       
       setBookings(transformedData);
+      setPagination(prev => ({
+        ...prev,
+        page: currentPage,
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / prev.pageSize)
+      }));
+      
+      console.log(`✅ BOOKINGS: Fetched ${transformedData.length} bookings (page ${currentPage}/${Math.ceil((count || 0) / pagination.pageSize)}) out of ${count || 0} total`);
     } catch (err) {
       console.error('Error fetching bookings:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
     }
+  };
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= pagination.totalPages) {
+      fetchBookings(page);
+    }
+  };
+
+  const changePageSize = (newPageSize: number) => {
+    setPagination(prev => ({
+      ...prev,
+      pageSize: newPageSize,
+      page: 1
+    }));
+    fetchBookings(1);
+  };
+
+  const search = (term: string) => {
+    setSearchTerm(term);
+    setPagination(prev => ({ ...prev, page: 1 }));
+    fetchBookings(1, term);
   };
 
   const createBooking = async (bookingData: any) => {
@@ -272,15 +329,20 @@ export const useBookings = () => {
 
   useEffect(() => {
     fetchBookings();
-  }, []);
+  }, [pagination.pageSize]);
 
   return {
     bookings,
     loading,
     error,
+    pagination,
+    searchTerm,
     fetchBookings,
     createBooking,
     updateBooking,
     deleteBooking,
+    goToPage,
+    changePageSize,
+    search,
   };
 };

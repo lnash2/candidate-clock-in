@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -56,7 +57,7 @@ export const useVacancies = () => {
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState<PaginationState>({
     page: 1,
-    pageSize: 50000,
+    pageSize: 200,
     total: 0,
     totalPages: 0
   });
@@ -77,15 +78,20 @@ export const useVacancies = () => {
   const fetchVacancies = async (page?: number, search?: string, currentFilters?: any) => {
     try {
       setLoading(true);
+      const currentPage = page || pagination.page;
       const currentSearch = search !== undefined ? search : searchTerm;
       const appliedFilters = currentFilters || filters;
       
-      // First, fetch vacancies with a simple query
+      // Calculate range for pagination
+      const from = (currentPage - 1) * pagination.pageSize;
+      const to = from + pagination.pageSize - 1;
+      
+      // First, fetch vacancies with proper pagination
       let vacanciesQuery = supabase
         .from('vacancies')
         .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
-        .limit(50000);
+        .range(from, to);
 
       // Add search functionality - search across multiple fields
       if (currentSearch) {
@@ -116,7 +122,7 @@ export const useVacancies = () => {
 
       if (vacanciesError) throw vacanciesError;
 
-      // Fetch related data separately
+      // Fetch related data separately for efficient joining
       const [companiesData, contactsData, statusesData, addressesData, industriesData, jobCategoriesData] = await Promise.all([
         supabase.from('companies').select('id, name'),
         supabase.from('contacts').select('id, name'),
@@ -192,12 +198,12 @@ export const useVacancies = () => {
       setVacancies(filteredVacancies);
       setPagination(prev => ({
         ...prev,
-        page: 1,
-        total: filteredVacancies.length,
-        totalPages: Math.ceil(filteredVacancies.length / prev.pageSize)
+        page: currentPage,
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / prev.pageSize)
       }));
       
-      console.log(`✅ VACANCIES: Fetched ${filteredVacancies.length} vacancies out of ${count || 0} total`);
+      console.log(`✅ VACANCIES: Fetched ${filteredVacancies.length} vacancies (page ${currentPage}/${Math.ceil((count || 0) / pagination.pageSize)}) out of ${count || 0} total`);
     } catch (err) {
       console.error('Error fetching vacancies:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -224,6 +230,15 @@ export const useVacancies = () => {
     if (page >= 1 && page <= pagination.totalPages) {
       fetchVacancies(page);
     }
+  };
+
+  const changePageSize = (newPageSize: number) => {
+    setPagination(prev => ({
+      ...prev,
+      pageSize: newPageSize,
+      page: 1
+    }));
+    fetchVacancies(1);
   };
 
   const search = (term: string) => {
@@ -324,7 +339,7 @@ export const useVacancies = () => {
   useEffect(() => {
     fetchVacancies();
     fetchStatuses();
-  }, []);
+  }, [pagination.pageSize]);
 
   return {
     vacancies,
@@ -339,6 +354,7 @@ export const useVacancies = () => {
     updateVacancy,
     deleteVacancy,
     goToPage,
+    changePageSize,
     search,
     applyFilters,
   };
